@@ -1,15 +1,17 @@
 package com.festivalmanager.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class User {
 
     @Id
@@ -20,13 +22,21 @@ public class User {
     private String username;
 
     @Column(nullable = false)
-    private String password;
+    private String password; 
 
     @Column(nullable = false)
     private String fullName;
 
     @Enumerated(EnumType.STRING)
-    private PermanentRole permanentRole = PermanentRole.USER; // Default role
+    @Column(nullable = false)
+    private PermanentRole permanentRole = PermanentRole.USER;
 
+    @Column(nullable = false)
     private boolean active = true;
+
+    // Security
+    private int failedLoginAttempts = 0;
+    private int failedPasswordUpdates = 0;
+
+    private LocalDateTime lockedUntil; // null = not locked
 }
