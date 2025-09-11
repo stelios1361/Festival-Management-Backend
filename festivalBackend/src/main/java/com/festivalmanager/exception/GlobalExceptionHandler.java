@@ -4,35 +4,46 @@ import com.festivalmanager.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+
 import java.time.LocalDateTime;
 
-// main global exception handler to have all of the backends exceptions generated
-// and controlled from a single place 
-
-
+/**
+ * Global exception handler to catch and format all exceptions consistently.
+ */
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Helper method to build structured API responses
-    private <T> ResponseEntity<ApiResponse<T>> buildResponse(org.springframework.http.HttpStatus status, String message) {
-        ApiResponse<T> response = new ApiResponse<>(
-                LocalDateTime.now(),
-                status.value(),
-                message,
-                null
-        );
-        return new ResponseEntity<>(response, status);
-    }
-
-    // Handle all ApiException instances
+    /**
+     * Handles ApiException and builds a structured API response.
+     *
+     * @param ex the ApiException thrown
+     * @return a ResponseEntity containing the ApiResponse
+     */
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiResponse<Void>> handleApiException(ApiException ex) {
-        return buildResponse(ex.getStatus(), ex.getMessage());
+        ApiResponse<Void> response = new ApiResponse<>(
+                LocalDateTime.now(),
+                ex.getStatus().value(),
+                ex.getMessage(),
+                null
+        );
+        return new ResponseEntity<>(response, ex.getStatus());
     }
 
-    // Fallback for unexpected RuntimeExceptions
+    /**
+     * Handles unexpected RuntimeExceptions.
+     *
+     * @param ex the RuntimeException thrown
+     * @return a ResponseEntity containing the ApiResponse
+     */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
-        return buildResponse(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+        ApiResponse<Void> response = new ApiResponse<>(
+                LocalDateTime.now(),
+                500,
+                ex.getMessage(),
+                null
+        );
+        return ResponseEntity.internalServerError().body(response);
     }
 }

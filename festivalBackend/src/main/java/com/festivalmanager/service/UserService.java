@@ -14,6 +14,23 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
+     /**
+     * Registers a new user in the system.
+     * <p>
+     * Validates username and password according to rules:
+     * <ul>
+     *     <li>Username: at least 5 chars, starts with a letter, letters/digits/_ only</li>
+     *     <li>Password: at least 8 chars, contains uppercase, lowercase, number, special char</li>
+     * </ul>
+     * <br>
+     * Assigns the first user as ADMIN and others as USER.
+     *
+     * @param user the user to register
+     * @return the saved {@link User} object
+     * @throws ApiException if the username already exists or validation fails
+     */
+    
+    //user registration 
     public User registerUser(User user) {
 
         // Check if username already exists

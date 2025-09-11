@@ -5,6 +5,9 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+/**
+ * Entity representing a user in the system.
+ */
 @Entity
 @Table(name = "users")
 @Getter
@@ -18,25 +21,29 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false, length = 50)
+    /** Username of the user */
     private String username;
 
-    @Column(nullable = false)
-    private String password; 
+    /** Password of the user (stored securely) */
+    private String password;
 
-    @Column(nullable = false)
+    /** Full name of the user */
     private String fullName;
 
+    /** Permanent role assigned to the user */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PermanentRole permanentRole = PermanentRole.USER;
+    private PermanentRole permanentRole;
 
-    @Column(nullable = false)
-    private boolean active = true;
+    /** Whether the user is active */
+    private boolean active;
 
-    // Security
-    private int failedLoginAttempts = 0;
-    private int failedPasswordUpdates = 0;
+    /** Failed login attempts counter */
+    private int failedLoginAttempts;
 
-    private LocalDateTime lockedUntil; // null = not locked
+    /** Failed password update attempts counter */
+    private int failedPasswordUpdates;
+
+    /** Lock expiration timestamp, if account is locked */
+    private LocalDateTime lockedUntil;
+
 }

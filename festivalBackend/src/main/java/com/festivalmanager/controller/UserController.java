@@ -8,8 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 
-//controller and endpoints for users 
-
+/**
+ * REST controller for managing user-related operations.
+ */
 
 @RestController
 @RequestMapping("/api/users")
@@ -17,8 +18,14 @@ public class UserController {
 
     @Autowired
     private UserService userService;
-
-    //if all of the requested fields and requirments are ment user is successfully registered 
+    
+    
+     /**
+     * Registers a new user.
+     *
+     * @param user the user object from request body
+     * @return an {@link ApiResponse} containing the saved user or any error  
+     */
     @PostMapping("/register")
     public ApiResponse<User> register(@RequestBody User user) {
         User savedUser = userService.registerUser(user);
