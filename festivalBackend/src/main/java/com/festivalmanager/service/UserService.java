@@ -5,7 +5,6 @@ import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.PermanentRole;
 import com.festivalmanager.model.User;
 import com.festivalmanager.repository.UserRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -147,6 +146,11 @@ public class UserService {
 
         User requester = userRepository.findByUsername(request.getRequesterUsername())
                 .orElseThrow(() -> new ApiException("Requester not found", HttpStatus.UNAUTHORIZED));
+
+        if (!requester.isActive()) {
+            throw new ApiException("Account is deactivated. Please contact admin.", HttpStatus.FORBIDDEN);
+        }
+
         tokenService.validateToken(request.getToken(), requester);
 
         User targetUser;
@@ -194,23 +198,28 @@ public class UserService {
      * @return ApiResponse with new token
      */
     public ApiResponse<Map<String, Object>> updateUserPassword(UpdatePasswordRequest request) {
-        User user = userRepository.findByUsername(request.getRequesterUsername())
+        User requester = userRepository.findByUsername(request.getRequesterUsername())
                 .orElseThrow(() -> new ApiException("User not found", HttpStatus.UNAUTHORIZED));
-        tokenService.validateToken(request.getToken(), user);
+
+        if (!requester.isActive()) {
+            throw new ApiException("Account is deactivated. Please contact admin.", HttpStatus.FORBIDDEN);
+        }
+
+        tokenService.validateToken(request.getToken(), requester);
 
         Map<String, Object> data = new HashMap<>();
-        var newToken = tokenService.generateToken(user);
+        var newToken = tokenService.generateToken(requester);
         data.put("token", newToken.getValue());
         data.put("expiresAt", newToken.getExpiresAt());
 
-        if (!user.getPassword().equals(request.getOldPassword())) {
-            user.setFailedPasswordUpdates(user.getFailedPasswordUpdates() + 1);
-            if (user.getFailedPasswordUpdates() >= 3) {
-                user.setActive(false);
-                userRepository.save(user);
+        if (!requester.getPassword().equals(request.getOldPassword())) {
+            requester.setFailedPasswordUpdates(requester.getFailedPasswordUpdates() + 1);
+            if (requester.getFailedPasswordUpdates() >= 3) {
+                requester.setActive(false);
+                userRepository.save(requester);
                 throw new ApiException("Account deactivated after 3 failed password update attempts", HttpStatus.FORBIDDEN);
             }
-            userRepository.save(user);
+            userRepository.save(requester);
             throw new ApiException("Old password is incorrect", HttpStatus.BAD_REQUEST);
         }
 
@@ -224,9 +233,9 @@ public class UserService {
             throw new ApiException("Password must be at least 8 characters and contain uppercase, lowercase, number, and special character.", HttpStatus.BAD_REQUEST);
         }
 
-        user.setPassword(pw1);
-        user.setFailedPasswordUpdates(0);
-        userRepository.save(user);
+        requester.setPassword(pw1);
+        requester.setFailedPasswordUpdates(0);
+        userRepository.save(requester);
 
         return new ApiResponse<>(
                 LocalDateTime.now(),
@@ -247,6 +256,11 @@ public class UserService {
     public ApiResponse<Map<String, Object>> updateAccountStatus(UpdateAccountStatusRequest request) {
         User requester = userRepository.findByUsername(request.getRequesterUsername())
                 .orElseThrow(() -> new ApiException("Requester not found", HttpStatus.UNAUTHORIZED));
+
+        if (!requester.isActive()) {
+            throw new ApiException("Account is deactivated. Please contact admin.", HttpStatus.FORBIDDEN);
+        }
+
         tokenService.validateToken(request.getToken(), requester);
 
         if (requester.getPermanentRole() != PermanentRole.ADMIN) {
@@ -282,6 +296,11 @@ public class UserService {
     public ApiResponse<Map<String, Object>> deleteUser(DeleteUserRequest request) {
         User requester = userRepository.findByUsername(request.getRequesterUsername())
                 .orElseThrow(() -> new ApiException("Requester not found", HttpStatus.UNAUTHORIZED));
+
+        if (!requester.isActive()) {
+            throw new ApiException("Account is deactivated. Please contact admin.", HttpStatus.FORBIDDEN);
+        }
+
         tokenService.validateToken(request.getToken(), requester);
 
         User targetUser;
@@ -313,6 +332,11 @@ public class UserService {
     public ApiResponse<Map<String, Object>> logOutUser(LogoutRequest request) {
         User requester = userRepository.findByUsername(request.getRequesterUsername())
                 .orElseThrow(() -> new ApiException("Requester not found", HttpStatus.UNAUTHORIZED));
+
+        if (!requester.isActive()) {
+            throw new ApiException("Account is deactivated. Please contact admin.", HttpStatus.FORBIDDEN);
+        }
+
         tokenService.validateToken(request.getToken(), requester);
 
         //invalidate current users token 
@@ -323,18 +347,5 @@ public class UserService {
                 "User logged out successfully",
                 new HashMap<>()
         );
-    }
-
-    //-------------------- USER DEACTIVATION BAD TOKEN --------------------
-    /**
-     * Deactivates a user unless they are an ADMIN.
-     *
-     * @param user the user to deactivate
-     */
-    public void deactivateIfNotAdmin(User user) {
-        if (user.getPermanentRole() != PermanentRole.ADMIN && user.isActive()) {
-            user.setActive(false);
-            userRepository.save(user);
-        }
     }
 }

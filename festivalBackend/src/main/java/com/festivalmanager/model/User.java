@@ -3,10 +3,14 @@ package com.festivalmanager.model;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Entity representing a user in the system.
  */
+@Getter
+@Setter
 @Entity
 @Table(name = "users")
 public class User {
@@ -40,81 +44,4 @@ public class User {
     /** Lock expiration timestamp, if account is locked */
     private LocalDateTime lockedUntil;
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public PermanentRole getPermanentRole() {
-        return permanentRole;
-    }
-
-    public void setPermanentRole(PermanentRole permanentRole) {
-        this.permanentRole = permanentRole;
-    }
-
-    public boolean isActive() {
-        return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
-    }
-
-    public int getFailedLoginAttempts() {
-        return failedLoginAttempts;
-    }
-
-    public void setFailedLoginAttempts(int failedLoginAttempts) {
-        this.failedLoginAttempts = failedLoginAttempts;
-    }
-
-    public int getFailedPasswordUpdates() {
-        return failedPasswordUpdates;
-    }
-
-    public void setFailedPasswordUpdates(int failedPasswordUpdates) {
-        this.failedPasswordUpdates = failedPasswordUpdates;
-    }
-
-    public LocalDateTime getLockedUntil() {
-        return lockedUntil;
-    }
-
-    public void setLockedUntil(LocalDateTime lockedUntil) {
-        this.lockedUntil = lockedUntil;
-    }
-    
-    
-    
-
-
-    
 }

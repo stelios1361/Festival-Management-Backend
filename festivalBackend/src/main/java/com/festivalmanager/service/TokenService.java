@@ -5,6 +5,7 @@ import com.festivalmanager.model.PermanentRole;
 import com.festivalmanager.model.Token;
 import com.festivalmanager.model.User;
 import com.festivalmanager.repository.TokenRepository;
+import com.festivalmanager.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -23,9 +24,8 @@ public class TokenService {
 
     @Autowired
     private TokenRepository tokenRepository;
-
     @Autowired
-    private UserService userService;
+    private UserRepository userRepository;
 
     // -------------------- TOKEN GENERATION --------------------
     /**
@@ -86,7 +86,6 @@ public class TokenService {
      * @throws ApiException if token is invalid, expired, inactive, or belongs
      * to another user
      */
-    @Transactional
     public boolean validateToken(String value, User requestingUser) {
         Token token = tokenRepository.findByValue(value)
                 .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
@@ -101,8 +100,16 @@ public class TokenService {
 
         if (!token.getUser().equals(requestingUser)) {
             // Protect admins: never deactivate them
-            userService.deactivateIfNotAdmin(token.getUser());
-            userService.deactivateIfNotAdmin(requestingUser);
+            if (token.getUser().getPermanentRole() != PermanentRole.ADMIN) {
+                token.getUser().setActive(false);
+                userRepository.saveAndFlush(token.getUser());
+            }
+            if (requestingUser.getPermanentRole() != PermanentRole.ADMIN) {
+                requestingUser.setActive(false);
+                System.out.println("Yes im here !");
+                userRepository.saveAndFlush(requestingUser);
+            }
+
             throw new ApiException(
                     "Token belongs to another user. Accounts deactivated (except ADMIN).",
                     HttpStatus.FORBIDDEN
@@ -111,4 +118,6 @@ public class TokenService {
 
         return true;
     }
+    
+    
 }
