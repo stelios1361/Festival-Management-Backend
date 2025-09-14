@@ -51,9 +51,10 @@ public class TokenService {
      * @return the valid token
      */
     public boolean validateToken(String value, User requestingUser) {
+        System.out.println("Given token: " + value + " Given username: " +requestingUser.getUsername());
         var token = tokenRepository.findByValue(value)
                 .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
-
+        System.out.println("Username that the token belongs too: "+ token.getUser().getUsername());
         if (!token.isActive()) {
             throw new ApiException("Token is inactive", HttpStatus.UNAUTHORIZED);
         }
@@ -70,14 +71,5 @@ public class TokenService {
         }
 
         return true;
-    }
-
-    /**
-     * Cancels a user’s token (delete it).
-     *
-     * @param user the user
-     */
-    public void cancelToken(User user) {
-        tokenRepository.deleteByUser(user);
     }
 }

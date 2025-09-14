@@ -3,6 +3,7 @@ package com.festivalmanager.service;
 import com.festivalmanager.dto.ApiResponse;
 import com.festivalmanager.dto.LoginRequest;
 import com.festivalmanager.dto.RegisterRequest;
+import com.festivalmanager.dto.UpdateInfoRequest;
 import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.User;
 import com.festivalmanager.model.PermanentRole;
@@ -103,7 +104,7 @@ public class UserService {
                 .orElseThrow(() -> new ApiException("Invalid username or password", HttpStatus.UNAUTHORIZED));
 
         if (!user.isActive()) {
-            throw new ApiException("Account is deactivated. Contact admin.", HttpStatus.FORBIDDEN);
+            throw new ApiException("Account is deactivated. Please contact admin.", HttpStatus.FORBIDDEN);
         }
 
         if (!user.getPassword().equals(request.getPassword())) {
@@ -133,6 +134,55 @@ public class UserService {
                 HttpStatus.OK.value(),
                 "Login successful",
                 data
+        );
+    }
+
+    public ApiResponse<Map<String, Object>> updateUserInfo(UpdateInfoRequest request) {
+        // Validate the token
+        User requester = userRepository.findByUsername(request.getRequesterUsername())
+                .orElseThrow(() -> new ApiException("Requester not found", HttpStatus.UNAUTHORIZED));
+
+        tokenService.validateToken(request.getToken(), requester);
+
+        // Determine target user
+        User targetUser;
+        if (request.getTargetUsername() == null) {
+            targetUser = requester; // self update
+        } else {
+            // Only admins can update someone else
+            if (requester.getPermanentRole() != PermanentRole.ADMIN) {
+                throw new ApiException("You are not authorized to update other users", HttpStatus.FORBIDDEN);
+            }
+            targetUser = userRepository.findByUsername(request.getTargetUsername())
+                    .orElseThrow(() -> new ApiException("Target user not found", HttpStatus.NOT_FOUND));
+        }
+
+        // Apply updates
+        if (request.getNewFullName() != null) {
+            targetUser.setFullName(request.getNewFullName());
+        }
+
+        if (request.getNewUsername() != null && !request.getNewUsername().equals(targetUser.getUsername())) {
+            if (userRepository.existsByUsername(request.getNewUsername())) {
+                throw new ApiException("Username already taken", HttpStatus.CONFLICT);
+            }
+            targetUser.setUsername(request.getNewUsername());
+
+            // Regenerate token
+            if (request.getTargetUsername() == null) {
+                tokenService.generateToken(requester); // self-update
+            } else {
+                tokenService.generateToken(targetUser); // admin updated someone else
+            }
+        }
+
+        userRepository.save(targetUser);
+
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "User information updated successfully",
+                new HashMap<>()
         );
     }
 

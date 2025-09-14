@@ -3,6 +3,7 @@ package com.festivalmanager.controller;
 import com.festivalmanager.dto.ApiResponse;
 import com.festivalmanager.dto.LoginRequest;
 import com.festivalmanager.dto.RegisterRequest;
+import com.festivalmanager.dto.UpdateInfoRequest;
 import com.festivalmanager.service.UserService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,11 @@ public class UserController {
     @PostMapping("/login")
     public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest loginRequest) {
         return userService.loginUser(loginRequest);
+    }
+    
+    @PostMapping("/updateuserinfo")
+    public ApiResponse<Map<String, Object>> updateUserInfo(@RequestBody UpdateInfoRequest updateinforequest) {
+        return userService.updateUserInfo(updateinforequest);
     }
 
 }
