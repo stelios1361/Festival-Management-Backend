@@ -1,9 +1,12 @@
 package com.festivalmanager.controller;
 
 import com.festivalmanager.dto.ApiResponse;
+import com.festivalmanager.dto.DeleteUserRequest;
 import com.festivalmanager.dto.LoginRequest;
 import com.festivalmanager.dto.RegisterRequest;
+import com.festivalmanager.dto.UpdateAccountStatusRequest;
 import com.festivalmanager.dto.UpdateInfoRequest;
+import com.festivalmanager.dto.UpdatePasswordRequest;
 import com.festivalmanager.service.UserService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,10 +37,25 @@ public class UserController {
     public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest loginRequest) {
         return userService.loginUser(loginRequest);
     }
-    
+
     @PostMapping("/updateuserinfo")
     public ApiResponse<Map<String, Object>> updateUserInfo(@RequestBody UpdateInfoRequest updateinforequest) {
         return userService.updateUserInfo(updateinforequest);
+    }
+
+    @PostMapping("/updateuserpassword")
+    public ApiResponse<Map<String, Object>> updateUserPassword(@RequestBody UpdatePasswordRequest updatepasswordrequest) {
+        return userService.updateUserPassword(updatepasswordrequest);
+    }
+
+    @PostMapping("/updateaccountstatus")
+    public ApiResponse<Map<String, Object>> updateAccountStatus(@RequestBody UpdateAccountStatusRequest updateaccountstatusrequest) {
+        return userService.updateAccountStatus(updateaccountstatusrequest);
+    }
+
+    @PostMapping("/deleteuser")
+    public ApiResponse<Map<String, Object>> deleteUser(@RequestBody DeleteUserRequest deleteuserRequest) {
+        return userService.deleteUser(deleteuserRequest);
     }
 
 }

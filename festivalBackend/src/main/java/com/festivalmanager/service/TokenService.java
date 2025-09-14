@@ -44,6 +44,28 @@ public class TokenService {
     }
 
     /**
+     * Deactivates all active tokens of a given user.
+     *
+     * @param user the user whose tokens should be deactivated
+     */
+    @Transactional
+    public void deactivateTokens(User user) {
+        var tokens = tokenRepository.findAllByUser(user);
+        tokens.forEach(t -> t.setActive(false));
+        tokenRepository.saveAll(tokens);
+    }
+
+    /**
+     * Deletes all tokens of a given user.
+     *
+     * @param user the user whose tokens should be deleted
+     */
+    @Transactional
+    public void deleteTokens(User user) {
+        tokenRepository.deleteByUser(user);
+    }
+
+    /**
      * Validates a token string.
      *
      * @param value the token value
@@ -51,10 +73,10 @@ public class TokenService {
      * @return the valid token
      */
     public boolean validateToken(String value, User requestingUser) {
-        System.out.println("Given token: " + value + " Given username: " +requestingUser.getUsername());
+        System.out.println("Given token: " + value + " Given username: " + requestingUser.getUsername());
         var token = tokenRepository.findByValue(value)
                 .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
-        System.out.println("Username that the token belongs too: "+ token.getUser().getUsername());
+        System.out.println("Username that the token belongs too: " + token.getUser().getUsername());
         if (!token.isActive()) {
             throw new ApiException("Token is inactive", HttpStatus.UNAUTHORIZED);
         }
