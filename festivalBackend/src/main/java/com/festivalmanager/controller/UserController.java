@@ -1,19 +1,15 @@
 package com.festivalmanager.controller;
 
-import com.festivalmanager.dto.ApiResponse;
-import com.festivalmanager.dto.DeleteUserRequest;
-import com.festivalmanager.dto.LoginRequest;
-import com.festivalmanager.dto.RegisterRequest;
-import com.festivalmanager.dto.UpdateAccountStatusRequest;
-import com.festivalmanager.dto.UpdateInfoRequest;
-import com.festivalmanager.dto.UpdatePasswordRequest;
+import com.festivalmanager.dto.*;
 import com.festivalmanager.service.UserService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller for managing user-related operations.
+ * REST controller for managing user-related operations, including
+ * registration, authentication, information update, password update,
+ * account status management, and user deletion.
  */
 @RestController
 @RequestMapping("/api/users")
@@ -23,39 +19,68 @@ public class UserController {
     private UserService userService;
 
     /**
-     * Registers a new user.
+     * Registers a new user in the system.
      *
-     * @param registerRequest
-     * @return an {@link ApiResponse} containing the saved user or any error
+     * @param request registration request containing username, full name, and passwords
+     * @return ApiResponse with operation status
      */
     @PostMapping("/register")
-    public ApiResponse<Map<String, Object>> register(@RequestBody RegisterRequest registerRequest) {
-        return userService.registerUser(registerRequest);
+    public ApiResponse<Map<String, Object>> register(@RequestBody RegisterRequest request) {
+        return userService.registerUser(request);
     }
 
+    /**
+     * Authenticates a user and returns a token.
+     *
+     * @param request login request containing username and password
+     * @return ApiResponse with token and expiration
+     */
     @PostMapping("/login")
-    public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest loginRequest) {
-        return userService.loginUser(loginRequest);
+    public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest request) {
+        return userService.loginUser(request);
     }
 
+    /**
+     * Updates user information such as username or full name.
+     *
+     * @param request update info request containing requester info, token, and optional new data
+     * @return ApiResponse with operation status and new token if applicable
+     */
     @PostMapping("/updateuserinfo")
-    public ApiResponse<Map<String, Object>> updateUserInfo(@RequestBody UpdateInfoRequest updateinforequest) {
-        return userService.updateUserInfo(updateinforequest);
+    public ApiResponse<Map<String, Object>> updateUserInfo(@RequestBody UpdateInfoRequest request) {
+        return userService.updateUserInfo(request);
     }
 
+    /**
+     * Updates a user's password.
+     *
+     * @param request password update request containing old and new passwords
+     * @return ApiResponse with operation status and new token
+     */
     @PostMapping("/updateuserpassword")
-    public ApiResponse<Map<String, Object>> updateUserPassword(@RequestBody UpdatePasswordRequest updatepasswordrequest) {
-        return userService.updateUserPassword(updatepasswordrequest);
+    public ApiResponse<Map<String, Object>> updateUserPassword(@RequestBody UpdatePasswordRequest request) {
+        return userService.updateUserPassword(request);
     }
 
+    /**
+     * Updates a user's account status (activation/deactivation).
+     *
+     * @param request account status update request containing target username and new status
+     * @return ApiResponse with operation status
+     */
     @PostMapping("/updateaccountstatus")
-    public ApiResponse<Map<String, Object>> updateAccountStatus(@RequestBody UpdateAccountStatusRequest updateaccountstatusrequest) {
-        return userService.updateAccountStatus(updateaccountstatusrequest);
+    public ApiResponse<Map<String, Object>> updateAccountStatus(@RequestBody UpdateAccountStatusRequest request) {
+        return userService.updateAccountStatus(request);
     }
 
+    /**
+     * Deletes a user account. Can be executed by the user themselves or an admin.
+     *
+     * @param request delete user request containing target username (optional) and requester info
+     * @return ApiResponse with operation status
+     */
     @PostMapping("/deleteuser")
-    public ApiResponse<Map<String, Object>> deleteUser(@RequestBody DeleteUserRequest deleteuserRequest) {
-        return userService.deleteUser(deleteuserRequest);
+    public ApiResponse<Map<String, Object>> deleteUser(@RequestBody DeleteUserRequest request) {
+        return userService.deleteUser(request);
     }
-
 }

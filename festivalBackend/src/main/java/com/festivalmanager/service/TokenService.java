@@ -11,9 +11,11 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 
 /**
  * Service for managing authentication tokens.
+ * Handles token generation, validation, deactivation, and deletion.
  */
 @Service
 public class TokenService {
@@ -21,42 +23,50 @@ public class TokenService {
     @Autowired
     private TokenRepository tokenRepository;
 
+    // -------------------- TOKEN GENERATION --------------------
+
     /**
-     * Creates a new token for the given user, deleting any old ones.
+     * Generates a new token for the given user.
+     * Invalidates all existing tokens.
      *
-     * @param user the user to generate a token for
-     * @return the generated token
+     * @param user the user for whom the token is generated
+     * @return the newly created Token
      */
     @Transactional
     public Token generateToken(User user) {
-        // Invalidate existing tokens instead of deleting
-        var oldTokens = tokenRepository.findAllByUser(user);
+        // Invalidate existing tokens
+        List<Token> oldTokens = tokenRepository.findAllByUser(user);
         oldTokens.forEach(t -> t.setActive(false));
         tokenRepository.saveAll(oldTokens);
 
-        // Create new one
+        // Create new token
         Token token = new Token();
         token.setUser(user);
         token.setValue(UUID.randomUUID().toString());
         token.setExpiresAt(LocalDateTime.now().plusHours(2));
         token.setActive(true);
+
         return tokenRepository.save(token);
     }
 
+    // -------------------- TOKEN DEACTIVATION --------------------
+
     /**
-     * Deactivates all active tokens of a given user.
+     * Deactivates all tokens of a given user.
      *
      * @param user the user whose tokens should be deactivated
      */
     @Transactional
     public void deactivateTokens(User user) {
-        var tokens = tokenRepository.findAllByUser(user);
+        List<Token> tokens = tokenRepository.findAllByUser(user);
         tokens.forEach(t -> t.setActive(false));
         tokenRepository.saveAll(tokens);
     }
 
+    // -------------------- TOKEN DELETION --------------------
+
     /**
-     * Deletes all tokens of a given user.
+     * Deletes all tokens associated with a given user.
      *
      * @param user the user whose tokens should be deleted
      */
@@ -65,18 +75,20 @@ public class TokenService {
         tokenRepository.deleteByUser(user);
     }
 
+    // -------------------- TOKEN VALIDATION --------------------
+
     /**
-     * Validates a token string.
+     * Validates a token string for a given user.
      *
-     * @param value the token value
-     * @param requestingUser the requesting user
-     * @return the valid token
+     * @param value          the token value
+     * @param requestingUser the user making the request
+     * @return true if the token is valid
+     * @throws ApiException if token is invalid, expired, inactive, or belongs to another user
      */
     public boolean validateToken(String value, User requestingUser) {
-        System.out.println("Given token: " + value + " Given username: " + requestingUser.getUsername());
-        var token = tokenRepository.findByValue(value)
+        Token token = tokenRepository.findByValue(value)
                 .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
-        System.out.println("Username that the token belongs too: " + token.getUser().getUsername());
+
         if (!token.isActive()) {
             throw new ApiException("Token is inactive", HttpStatus.UNAUTHORIZED);
         }
@@ -86,7 +98,7 @@ public class TokenService {
         }
 
         if (!token.getUser().equals(requestingUser)) {
-            // both accounts must be deactivated!
+            // Deactivate both users if token belongs to someone else
             token.getUser().setActive(false);
             requestingUser.setActive(false);
             throw new ApiException("Token belongs to another user. Accounts deactivated.", HttpStatus.FORBIDDEN);

@@ -1,107 +1,104 @@
 package com.festivalmanager.service;
 
-import com.festivalmanager.dto.ApiResponse;
-import com.festivalmanager.dto.DeleteUserRequest;
-import com.festivalmanager.dto.LoginRequest;
-import com.festivalmanager.dto.RegisterRequest;
-import com.festivalmanager.dto.UpdateAccountStatusRequest;
-import com.festivalmanager.dto.UpdateInfoRequest;
-import com.festivalmanager.dto.UpdatePasswordRequest;
+import com.festivalmanager.dto.*;
 import com.festivalmanager.exception.ApiException;
-import com.festivalmanager.model.User;
 import com.festivalmanager.model.PermanentRole;
+import com.festivalmanager.model.User;
 import com.festivalmanager.repository.UserRepository;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Service class for handling all user-related operations:
+ * registration, login, information updates, password updates,
+ * account status changes, and deletion.
+ */
 @Service
 public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+
     @Autowired
     private TokenService tokenService;
 
-    /**
-     * Registers a new user in the system.
-     * <p>
-     * Validates username and password according to rules:
-     * <ul>
-     * <li>Username: at least 5 chars, starts with a letter, letters/digits/_
-     * only</li>
-     * <li>Password: at least 8 chars, contains uppercase, lowercase, number,
-     * special char</li>
-     * </ul>
-     * <br>
-     * Assigns the first user as ADMIN and others as USER.
-     *
-     * @param request the register request model of the user details to be
-     * registered
-     * @return successful response or any error
-     * @throws ApiException if the username already exists or validation fails
-     */
-    //user registration 
-    public ApiResponse<Map<String, Object>> registerUser(RegisterRequest request) {
+    // -------------------- USER REGISTRATION --------------------
 
+    /**
+     * Registers a new user.
+     * <p>
+     * Validates username and password. First user becomes ADMIN, others are inactive.
+     *
+     * @param request the registration request containing user details
+     * @return ApiResponse with success message
+     * @throws ApiException if validation fails or username exists
+     */
+    public ApiResponse<Map<String, Object>> registerUser(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new ApiException("Username already exists!", HttpStatus.CONFLICT);
         }
 
         if (!request.getUsername().matches("^[A-Za-z][A-Za-z0-9_]{4,}$")) {
             throw new ApiException(
-                    "Invalid username. Must be bigger than 5 characters, start with a letter, and contain only letters, digits, or _",
+                    "Invalid username. Must start with a letter, be at least 5 characters, and contain only letters, digits, or _",
                     HttpStatus.BAD_REQUEST
             );
         }
 
-        String password1 = request.getPassword1();
-        String password2 = request.getPassword2();
-        if (!password1.equals(password2)) {
+        String pw1 = request.getPassword1();
+        String pw2 = request.getPassword2();
+        if (!pw1.equals(pw2)) {
+            throw new ApiException("The two passwords must match!", HttpStatus.BAD_REQUEST);
+        } else if (pw1.length() < 8
+                || !pw1.matches(".*[A-Z].*")
+                || !pw1.matches(".*[a-z].*")
+                || !pw1.matches(".*[0-9].*")
+                || !pw1.matches(".*[^A-Za-z0-9].*")) {
             throw new ApiException(
-                    "The two passwords must match!",
-                    HttpStatus.BAD_REQUEST
-            );
-        } else if (password1.length() < 8
-                || !password1.matches(".*[A-Z].*")
-                || !password1.matches(".*[a-z].*")
-                || !password1.matches(".*[0-9].*")
-                || !password1.matches(".*[^A-Za-z0-9].*")) {
-            throw new ApiException(
-                    "Password must be bigger than 8 characters and contain uppercase, lowercase, number, and special character.",
+                    "Password must be at least 8 characters and contain uppercase, lowercase, number, and special character.",
                     HttpStatus.BAD_REQUEST
             );
         }
 
-        User usr = new User();
-        usr.setFullName(request.getFullname());
-        usr.setPassword(request.getPassword1());
-        usr.setUsername(request.getUsername());
+        User user = new User();
+        user.setFullName(request.getFullname());
+        user.setUsername(request.getUsername());
+        user.setPassword(pw1);
+        user.setFailedLoginAttempts(0);
+        user.setFailedPasswordUpdates(0);
 
         if (userRepository.count() == 0) {
-            usr.setPermanentRole(PermanentRole.ADMIN);
-            usr.setActive(true);
+            user.setPermanentRole(PermanentRole.ADMIN);
+            user.setActive(true);
         } else {
-            usr.setPermanentRole(PermanentRole.USER);
-            usr.setActive(false);
+            user.setPermanentRole(PermanentRole.USER);
+            user.setActive(false);
         }
 
-        usr.setFailedLoginAttempts(0);
-        usr.setFailedPasswordUpdates(0);
+        userRepository.save(user);
 
-        userRepository.save(usr);
-        Map<String, Object> data = new HashMap<>();
         return new ApiResponse<>(
                 LocalDateTime.now(),
                 HttpStatus.OK.value(),
                 "User registered successfully",
-                data
+                new HashMap<>()
         );
     }
 
+    // -------------------- USER LOGIN --------------------
+
+    /**
+     * Authenticates a user and generates a token.
+     *
+     * @param request login request containing username and password
+     * @return ApiResponse containing token and expiration
+     * @throws ApiException if authentication fails or account is inactive
+     */
     public ApiResponse<Map<String, Object>> loginUser(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new ApiException("Invalid username or password", HttpStatus.UNAUTHORIZED));
@@ -112,13 +109,11 @@ public class UserService {
 
         if (!user.getPassword().equals(request.getPassword())) {
             user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
-
             if (user.getFailedLoginAttempts() >= 3) {
                 user.setActive(false);
                 userRepository.save(user);
                 throw new ApiException("Account deactivated after 3 failed login attempts", HttpStatus.FORBIDDEN);
             }
-
             userRepository.save(user);
             throw new ApiException("Invalid username or password", HttpStatus.UNAUTHORIZED);
         }
@@ -127,45 +122,41 @@ public class UserService {
         userRepository.save(user);
 
         var token = tokenService.generateToken(user);
-
         Map<String, Object> data = new HashMap<>();
         data.put("token", token.getValue());
         data.put("expiresAt", token.getExpiresAt());
 
-        return new ApiResponse<>(
-                LocalDateTime.now(),
-                HttpStatus.OK.value(),
-                "Login successful",
-                data
-        );
+        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(), "Login successful", data);
     }
 
+    // -------------------- UPDATE USER INFORMATION --------------------
+
+    /**
+     * Updates user information (full name or username).
+     * Admins can update other users; self-update regenerates token.
+     *
+     * @param request update info request containing new details
+     * @return ApiResponse with updated token if username changed
+     */
     public ApiResponse<Map<String, Object>> updateUserInfo(UpdateInfoRequest request) {
         Map<String, Object> data = new HashMap<>();
 
-        // Validate the token
         User requester = userRepository.findByUsername(request.getRequesterUsername())
                 .orElseThrow(() -> new ApiException("Requester not found", HttpStatus.UNAUTHORIZED));
-
         tokenService.validateToken(request.getToken(), requester);
 
-        // Determine target user
         User targetUser;
         if (request.getTargetUsername() == null) {
-            targetUser = requester; // self update
+            targetUser = requester;
         } else {
-            // Only admins can update someone else
             if (requester.getPermanentRole() != PermanentRole.ADMIN) {
-                throw new ApiException("You are not authorized to update other users", HttpStatus.FORBIDDEN);
+                throw new ApiException("Not authorized to update other users", HttpStatus.FORBIDDEN);
             }
             targetUser = userRepository.findByUsername(request.getTargetUsername())
                     .orElseThrow(() -> new ApiException("Target user not found", HttpStatus.NOT_FOUND));
         }
 
-        // Apply updates
-        if (request.getNewFullName() != null) {
-            targetUser.setFullName(request.getNewFullName());
-        }
+        if (request.getNewFullName() != null) targetUser.setFullName(request.getNewFullName());
 
         if (request.getNewUsername() != null && !request.getNewUsername().equals(targetUser.getUsername())) {
             if (userRepository.existsByUsername(request.getNewUsername())) {
@@ -173,42 +164,36 @@ public class UserService {
             }
             targetUser.setUsername(request.getNewUsername());
 
-            // Regenerate token
-            if (request.getTargetUsername() == null) {
-                var newToken = tokenService.generateToken(requester); // self-update
-                data.put("token", newToken.getValue());
-                data.put("expiresAt", newToken.getExpiresAt());
-            } else {
-                var newToken = tokenService.generateToken(targetUser); // admin updated someone else
-                data.put("token", newToken.getValue());
-                data.put("expiresAt", newToken.getExpiresAt());
-            }
-
+            var newToken = tokenService.generateToken(targetUser);
+            data.put("token", newToken.getValue());
+            data.put("expiresAt", newToken.getExpiresAt());
         }
 
         userRepository.save(targetUser);
 
-        return new ApiResponse<>(
-                LocalDateTime.now(),
-                HttpStatus.OK.value(),
-                "User information updated successfully",
-                data
-        );
+        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(), "User information updated successfully", data);
     }
 
+    // -------------------- UPDATE USER PASSWORD --------------------
+
+    /**
+     * Updates user password.
+     * Invalidates old token and regenerates new token.
+     * Deactivates account after 3 consecutive failed attempts.
+     *
+     * @param request update password request
+     * @return ApiResponse with new token
+     */
     public ApiResponse<Map<String, Object>> updateUserPassword(UpdatePasswordRequest request) {
-        //Validate token
         User user = userRepository.findByUsername(request.getRequesterUsername())
                 .orElseThrow(() -> new ApiException("User not found", HttpStatus.UNAUTHORIZED));
         tokenService.validateToken(request.getToken(), user);
 
         Map<String, Object> data = new HashMap<>();
-        //Generate a new token in even if it fails later 
         var newToken = tokenService.generateToken(user);
         data.put("token", newToken.getValue());
         data.put("expiresAt", newToken.getExpiresAt());
 
-        //Check old password
         if (!user.getPassword().equals(request.getOldPassword())) {
             user.setFailedPasswordUpdates(user.getFailedPasswordUpdates() + 1);
             if (user.getFailedPasswordUpdates() >= 3) {
@@ -220,99 +205,79 @@ public class UserService {
             throw new ApiException("Old password is incorrect", HttpStatus.BAD_REQUEST);
         }
 
-        //Validate new passwords
         String pw1 = request.getNewPassword1();
         String pw2 = request.getNewPassword2();
-        if (!pw1.equals(pw2)) {
-            throw new ApiException("The two new passwords must match", HttpStatus.BAD_REQUEST);
-        }
-        if (pw1.length() < 8
-                || !pw1.matches(".*[A-Z].*")
-                || !pw1.matches(".*[a-z].*")
-                || !pw1.matches(".*[0-9].*")
-                || !pw1.matches(".*[^A-Za-z0-9].*")) {
-            throw new ApiException(
-                    "Password must be at least 8 characters and contain uppercase, lowercase, number, and special character.",
-                    HttpStatus.BAD_REQUEST
-            );
+        if (!pw1.equals(pw2)) throw new ApiException("The two new passwords must match", HttpStatus.BAD_REQUEST);
+        if (pw1.length() < 8 || !pw1.matches(".*[A-Z].*") || !pw1.matches(".*[a-z].*")
+                || !pw1.matches(".*[0-9].*") || !pw1.matches(".*[^A-Za-z0-9].*")) {
+            throw new ApiException("Password must be at least 8 characters and contain uppercase, lowercase, number, and special character.", HttpStatus.BAD_REQUEST);
         }
 
-        //Update password and reset failed attempts
         user.setPassword(pw1);
         user.setFailedPasswordUpdates(0);
         userRepository.save(user);
 
-        return new ApiResponse<>(
-                LocalDateTime.now(),
-                HttpStatus.OK.value(),
-                "Password updated successfully",
-                data
-        );
+        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(), "Password updated successfully", data);
     }
 
+    // -------------------- ACCOUNT STATUS UPDATE --------------------
+
+    /**
+     * Allows admin to activate/deactivate user accounts.
+     * Deactivates tokens if user is deactivated.
+     *
+     * @param request account status request
+     * @return ApiResponse
+     */
     public ApiResponse<Map<String, Object>> updateAccountStatus(UpdateAccountStatusRequest request) {
-        //Validate requester token
         User requester = userRepository.findByUsername(request.getRequesterUsername())
                 .orElseThrow(() -> new ApiException("Requester not found", HttpStatus.UNAUTHORIZED));
-
         tokenService.validateToken(request.getToken(), requester);
 
-        //Check permission
-        if (requester.getPermanentRole() != PermanentRole.ADMIN) { // or USER_MANAGER if you have that role
-            throw new ApiException("You are not authorized to update user accounts", HttpStatus.FORBIDDEN);
+        if (requester.getPermanentRole() != PermanentRole.ADMIN) {
+            throw new ApiException("Not authorized to update user accounts", HttpStatus.FORBIDDEN);
         }
 
-        //Find target user
         User targetUser = userRepository.findByUsername(request.getTargetUsername())
                 .orElseThrow(() -> new ApiException("Target user not found", HttpStatus.NOT_FOUND));
 
-        //Update active status
         targetUser.setActive(request.getNewActive());
-
         userRepository.save(targetUser);
 
-        if (!targetUser.isActive()) {
-            tokenService.deactivateTokens(targetUser);
-        }
+        if (!targetUser.isActive()) tokenService.deactivateTokens(targetUser);
 
-        return new ApiResponse<>(
-                LocalDateTime.now(),
-                HttpStatus.OK.value(),
-                "User account status updated successfully",
-                new HashMap<>()
-        );
+        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(), "User account status updated successfully", new HashMap<>());
     }
 
+    // -------------------- DELETE USER --------------------
+
+    /**
+     * Deletes a user account.
+     * Admins can delete other users; self-deletion allowed.
+     * Deletes all tokens for the user.
+     *
+     * @param request delete user request
+     * @return ApiResponse
+     */
     public ApiResponse<Map<String, Object>> deleteUser(DeleteUserRequest request) {
-        //Validate requester token
         User requester = userRepository.findByUsername(request.getRequesterUsername())
                 .orElseThrow(() -> new ApiException("Requester not found", HttpStatus.UNAUTHORIZED));
         tokenService.validateToken(request.getToken(), requester);
 
-        //Determine target user
         User targetUser;
         if (request.getTargetUsername() == null || request.getTargetUsername().equals(request.getRequesterUsername())) {
-            targetUser = requester; // self-deletion
+            targetUser = requester;
         } else {
             if (requester.getPermanentRole() != PermanentRole.ADMIN) {
-                throw new ApiException("You are not authorized to delete other users", HttpStatus.FORBIDDEN);
+                throw new ApiException("Not authorized to delete other users", HttpStatus.FORBIDDEN);
             }
             targetUser = userRepository.findByUsername(request.getTargetUsername())
                     .orElseThrow(() -> new ApiException("Target user not found", HttpStatus.NOT_FOUND));
         }
 
-        //Delete all tokens
         tokenService.deleteTokens(targetUser);
-
-        //Delete the user
         userRepository.delete(targetUser);
 
-        return new ApiResponse<>(
-                LocalDateTime.now(),
-                HttpStatus.OK.value(),
-                "User deleted successfully",
-                new HashMap<>()
-        );
+        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(), "User deleted successfully", new HashMap<>());
     }
-
 }
