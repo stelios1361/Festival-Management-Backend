@@ -2,7 +2,7 @@ package com.festivalmanager.controller;
 
 import com.festivalmanager.dto.ApiResponse;
 import com.festivalmanager.dto.LoginRequest;
-import com.festivalmanager.model.User;
+import com.festivalmanager.dto.RegisterRequest;
 import com.festivalmanager.service.UserService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,12 +21,12 @@ public class UserController {
     /**
      * Registers a new user.
      *
-     * @param user the user object from request body
+     * @param registerRequest
      * @return an {@link ApiResponse} containing the saved user or any error
      */
     @PostMapping("/register")
-    public ApiResponse<User> register(@RequestBody User user) {
-        return userService.registerUser(user);
+    public ApiResponse<Map<String, Object>> register(@RequestBody RegisterRequest registerRequest) {
+        return userService.registerUser(registerRequest);
     }
 
     @PostMapping("/login")

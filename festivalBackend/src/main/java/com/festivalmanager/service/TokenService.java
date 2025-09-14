@@ -4,6 +4,7 @@ import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.Token;
 import com.festivalmanager.model.User;
 import com.festivalmanager.repository.TokenRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,40 +27,49 @@ public class TokenService {
      * @param user the user to generate a token for
      * @return the generated token
      */
+    @Transactional
     public Token generateToken(User user) {
-        tokenRepository.deleteByUser(user);
+        // Invalidate existing tokens instead of deleting
+        var oldTokens = tokenRepository.findAllByUser(user);
+        oldTokens.forEach(t -> t.setActive(false));
+        tokenRepository.saveAll(oldTokens);
 
+        // Create new one
         Token token = new Token();
-        token.setValue(UUID.randomUUID().toString());
-        token.setExpiresAt(LocalDateTime.now().plusHours(2)); // valid 2h
         token.setUser(user);
-
+        token.setValue(UUID.randomUUID().toString());
+        token.setExpiresAt(LocalDateTime.now().plusHours(2));
+        token.setActive(true);
         return tokenRepository.save(token);
     }
 
     /**
      * Validates a token string.
      *
-     * @param tokenValue the token value
-     * @param user the requesting user (optional check)
+     * @param value the token value
+     * @param requestingUser the requesting user
      * @return the valid token
      */
-    public Token validateToken(String tokenValue, User user) {
-        Token token = tokenRepository.findByValue(tokenValue)
+    public boolean validateToken(String value, User requestingUser) {
+        var token = tokenRepository.findByValue(value)
                 .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+
+        if (!token.isActive()) {
+            throw new ApiException("Token is inactive", HttpStatus.UNAUTHORIZED);
+        }
 
         if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new ApiException("Token expired", HttpStatus.UNAUTHORIZED);
         }
 
-        if (user != null && !token.getUser().getId().equals(user.getId())) {
-            // deactivate both accounts as per spec
+        if (!token.getUser().equals(requestingUser)) {
+            // both accounts must be deactivated!
             token.getUser().setActive(false);
-            user.setActive(false);
-            throw new ApiException("Token does not belong to user. Accounts deactivated.", HttpStatus.FORBIDDEN);
+            requestingUser.setActive(false);
+            throw new ApiException("Token belongs to another user. Accounts deactivated.", HttpStatus.FORBIDDEN);
         }
 
-        return token;
+        return true;
     }
 
     /**

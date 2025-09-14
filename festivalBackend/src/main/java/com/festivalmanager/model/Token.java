@@ -20,6 +20,10 @@ public class Token {
 
     /** Expiration date/time */
     private LocalDateTime expiresAt;
+    
+    
+    /** Status of token valid or invalid */
+    private boolean active = true; 
 
     /** Associated user */
     @ManyToOne
@@ -58,6 +62,14 @@ public class Token {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 
 }

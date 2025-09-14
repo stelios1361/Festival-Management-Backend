@@ -1,7 +1,6 @@
 package com.festivalmanager.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 
 import java.time.LocalDateTime;
 

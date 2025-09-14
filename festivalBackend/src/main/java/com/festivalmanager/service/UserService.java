@@ -2,6 +2,7 @@ package com.festivalmanager.service;
 
 import com.festivalmanager.dto.ApiResponse;
 import com.festivalmanager.dto.LoginRequest;
+import com.festivalmanager.dto.RegisterRequest;
 import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.User;
 import com.festivalmanager.model.PermanentRole;
@@ -34,54 +35,66 @@ public class UserService {
      * <br>
      * Assigns the first user as ADMIN and others as USER.
      *
-     * @param user the user to register
-     * @return the saved {@link User} object
+     * @param request the register request model of the user details to be
+     * registered
+     * @return successful response or any error
      * @throws ApiException if the username already exists or validation fails
      */
     //user registration 
-    public ApiResponse<User> registerUser(User user) {
+    public ApiResponse<Map<String, Object>> registerUser(RegisterRequest request) {
 
-        if (userRepository.existsByUsername(user.getUsername())) {
+        if (userRepository.existsByUsername(request.getUsername())) {
             throw new ApiException("Username already exists!", HttpStatus.CONFLICT);
         }
 
-        if (!user.getUsername().matches("^[A-Za-z][A-Za-z0-9_]{4,}$")) {
+        if (!request.getUsername().matches("^[A-Za-z][A-Za-z0-9_]{4,}$")) {
             throw new ApiException(
                     "Invalid username. Must be bigger than 5 characters, start with a letter, and contain only letters, digits, or _",
                     HttpStatus.BAD_REQUEST
             );
         }
 
-        String password = user.getPassword();
-        if (password.length() < 8
-                || !password.matches(".*[A-Z].*")
-                || !password.matches(".*[a-z].*")
-                || !password.matches(".*[0-9].*")
-                || !password.matches(".*[^A-Za-z0-9].*")) {
+        String password1 = request.getPassword1();
+        String password2 = request.getPassword2();
+        if (!password1.equals(password2)) {
+            throw new ApiException(
+                    "The two passwords must match!",
+                    HttpStatus.BAD_REQUEST
+            );
+        } else if (password1.length() < 8
+                || !password1.matches(".*[A-Z].*")
+                || !password1.matches(".*[a-z].*")
+                || !password1.matches(".*[0-9].*")
+                || !password1.matches(".*[^A-Za-z0-9].*")) {
             throw new ApiException(
                     "Password must be bigger than 8 characters and contain uppercase, lowercase, number, and special character.",
                     HttpStatus.BAD_REQUEST
             );
         }
 
+        User usr = new User();
+        usr.setFullName(request.getFullname());
+        usr.setPassword(request.getPassword1());
+        usr.setUsername(request.getUsername());
+
         if (userRepository.count() == 0) {
-            user.setPermanentRole(PermanentRole.ADMIN);
-            user.setActive(true);
+            usr.setPermanentRole(PermanentRole.ADMIN);
+            usr.setActive(true);
         } else {
-            user.setPermanentRole(PermanentRole.USER);
-            user.setActive(false);
+            usr.setPermanentRole(PermanentRole.USER);
+            usr.setActive(false);
         }
 
-        user.setFailedLoginAttempts(0);
-        user.setFailedPasswordUpdates(0);
+        usr.setFailedLoginAttempts(0);
+        usr.setFailedPasswordUpdates(0);
 
-        User savedUser = userRepository.save(user);
-
+        userRepository.save(usr);
+        Map<String, Object> data = new HashMap<>();
         return new ApiResponse<>(
                 LocalDateTime.now(),
                 HttpStatus.OK.value(),
                 "User registered successfully",
-                savedUser
+                data
         );
     }
 
@@ -93,7 +106,6 @@ public class UserService {
             throw new ApiException("Account is deactivated. Contact admin.", HttpStatus.FORBIDDEN);
         }
 
-      
         if (!user.getPassword().equals(request.getPassword())) {
             user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
 
