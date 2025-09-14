@@ -5,6 +5,7 @@ import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.PermanentRole;
 import com.festivalmanager.model.User;
 import com.festivalmanager.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,9 +15,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Service class for handling all user-related operations:
- * registration, login, information updates, password updates,
- * account status changes, and deletion.
+ * Service class for handling all user-related operations: registration, login,
+ * logout ,information updates, password updates, account status changes and
+ * deletion.
  */
 @Service
 public class UserService {
@@ -28,11 +29,11 @@ public class UserService {
     private TokenService tokenService;
 
     // -------------------- USER REGISTRATION --------------------
-
     /**
      * Registers a new user.
      * <p>
-     * Validates username and password. First user becomes ADMIN, others are inactive.
+     * Validates username and password. First user becomes ADMIN, others are
+     * inactive.
      *
      * @param request the registration request containing user details
      * @return ApiResponse with success message
@@ -91,7 +92,6 @@ public class UserService {
     }
 
     // -------------------- USER LOGIN --------------------
-
     /**
      * Authenticates a user and generates a token.
      *
@@ -126,14 +126,18 @@ public class UserService {
         data.put("token", token.getValue());
         data.put("expiresAt", token.getExpiresAt());
 
-        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(), "Login successful", data);
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "Login successful",
+                data
+        );
     }
 
     // -------------------- UPDATE USER INFORMATION --------------------
-
     /**
-     * Updates user information (full name or username).
-     * Admins can update other users; self-update regenerates token.
+     * Updates user information (full name or username). Admins can update other
+     * users; self-update regenerates token.
      *
      * @param request update info request containing new details
      * @return ApiResponse with updated token if username changed
@@ -156,7 +160,9 @@ public class UserService {
                     .orElseThrow(() -> new ApiException("Target user not found", HttpStatus.NOT_FOUND));
         }
 
-        if (request.getNewFullName() != null) targetUser.setFullName(request.getNewFullName());
+        if (request.getNewFullName() != null) {
+            targetUser.setFullName(request.getNewFullName());
+        }
 
         if (request.getNewUsername() != null && !request.getNewUsername().equals(targetUser.getUsername())) {
             if (userRepository.existsByUsername(request.getNewUsername())) {
@@ -171,14 +177,17 @@ public class UserService {
 
         userRepository.save(targetUser);
 
-        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(), "User information updated successfully", data);
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "User information updated successfully",
+                data
+        );
     }
 
     // -------------------- UPDATE USER PASSWORD --------------------
-
     /**
-     * Updates user password.
-     * Invalidates old token and regenerates new token.
+     * Updates user password. Invalidates old token and regenerates new token.
      * Deactivates account after 3 consecutive failed attempts.
      *
      * @param request update password request
@@ -207,7 +216,9 @@ public class UserService {
 
         String pw1 = request.getNewPassword1();
         String pw2 = request.getNewPassword2();
-        if (!pw1.equals(pw2)) throw new ApiException("The two new passwords must match", HttpStatus.BAD_REQUEST);
+        if (!pw1.equals(pw2)) {
+            throw new ApiException("The two new passwords must match", HttpStatus.BAD_REQUEST);
+        }
         if (pw1.length() < 8 || !pw1.matches(".*[A-Z].*") || !pw1.matches(".*[a-z].*")
                 || !pw1.matches(".*[0-9].*") || !pw1.matches(".*[^A-Za-z0-9].*")) {
             throw new ApiException("Password must be at least 8 characters and contain uppercase, lowercase, number, and special character.", HttpStatus.BAD_REQUEST);
@@ -217,14 +228,18 @@ public class UserService {
         user.setFailedPasswordUpdates(0);
         userRepository.save(user);
 
-        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(), "Password updated successfully", data);
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "Password updated successfully",
+                data
+        );
     }
 
     // -------------------- ACCOUNT STATUS UPDATE --------------------
-
     /**
-     * Allows admin to activate/deactivate user accounts.
-     * Deactivates tokens if user is deactivated.
+     * Allows admin to activate/deactivate user accounts. Deactivates tokens if
+     * user is deactivated.
      *
      * @param request account status request
      * @return ApiResponse
@@ -244,17 +259,22 @@ public class UserService {
         targetUser.setActive(request.getNewActive());
         userRepository.save(targetUser);
 
-        if (!targetUser.isActive()) tokenService.deactivateTokens(targetUser);
+        if (!targetUser.isActive()) {
+            tokenService.deactivateTokens(targetUser);
+        }
 
-        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(), "User account status updated successfully", new HashMap<>());
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "User account status updated successfully",
+                new HashMap<>()
+        );
     }
 
     // -------------------- DELETE USER --------------------
-
     /**
-     * Deletes a user account.
-     * Admins can delete other users; self-deletion allowed.
-     * Deletes all tokens for the user.
+     * Deletes a user account. Admins can delete other users; Deletes all tokens
+     * for the user.
      *
      * @param request delete user request
      * @return ApiResponse
@@ -265,19 +285,56 @@ public class UserService {
         tokenService.validateToken(request.getToken(), requester);
 
         User targetUser;
-        if (request.getTargetUsername() == null || request.getTargetUsername().equals(request.getRequesterUsername())) {
-            targetUser = requester;
-        } else {
-            if (requester.getPermanentRole() != PermanentRole.ADMIN) {
-                throw new ApiException("Not authorized to delete other users", HttpStatus.FORBIDDEN);
-            }
-            targetUser = userRepository.findByUsername(request.getTargetUsername())
-                    .orElseThrow(() -> new ApiException("Target user not found", HttpStatus.NOT_FOUND));
+
+        if (requester.getPermanentRole() != PermanentRole.ADMIN) {
+            throw new ApiException("Not authorized to delete other users", HttpStatus.FORBIDDEN);
         }
+        targetUser = userRepository.findByUsername(request.getTargetUsername())
+                .orElseThrow(() -> new ApiException("Target user not found", HttpStatus.NOT_FOUND));
 
         tokenService.deleteTokens(targetUser);
         userRepository.delete(targetUser);
 
-        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(), "User deleted successfully", new HashMap<>());
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "User deleted successfully",
+                new HashMap<>()
+        );
+    }
+
+    // -------------------- LOGOUT USER --------------------
+    /**
+     * Logs out a user. (Invalidates current token)
+     *
+     * @param request log out user request
+     * @return ApiResponse
+     */
+    public ApiResponse<Map<String, Object>> logOutUser(LogoutRequest request) {
+        User requester = userRepository.findByUsername(request.getRequesterUsername())
+                .orElseThrow(() -> new ApiException("Requester not found", HttpStatus.UNAUTHORIZED));
+        tokenService.validateToken(request.getToken(), requester);
+
+        //invalidate current users token 
+        tokenService.deactivateTokens(requester);
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "User logged out successfully",
+                new HashMap<>()
+        );
+    }
+
+    //-------------------- USER DEACTIVATION BAD TOKEN --------------------
+    /**
+     * Deactivates a user unless they are an ADMIN.
+     *
+     * @param user the user to deactivate
+     */
+    public void deactivateIfNotAdmin(User user) {
+        if (user.getPermanentRole() != PermanentRole.ADMIN && user.isActive()) {
+            user.setActive(false);
+            userRepository.save(user);
+        }
     }
 }

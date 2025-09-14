@@ -1,6 +1,7 @@
 package com.festivalmanager.service;
 
 import com.festivalmanager.exception.ApiException;
+import com.festivalmanager.model.PermanentRole;
 import com.festivalmanager.model.Token;
 import com.festivalmanager.model.User;
 import com.festivalmanager.repository.TokenRepository;
@@ -14,8 +15,8 @@ import java.util.UUID;
 import java.util.List;
 
 /**
- * Service for managing authentication tokens.
- * Handles token generation, validation, deactivation, and deletion.
+ * Service for managing authentication tokens. Handles token generation,
+ * validation, deactivation, and deletion.
  */
 @Service
 public class TokenService {
@@ -23,11 +24,13 @@ public class TokenService {
     @Autowired
     private TokenRepository tokenRepository;
 
-    // -------------------- TOKEN GENERATION --------------------
+    @Autowired
+    private UserService userService;
 
+    // -------------------- TOKEN GENERATION --------------------
     /**
-     * Generates a new token for the given user.
-     * Invalidates all existing tokens.
+     * Generates a new token for the given user. Invalidates all existing
+     * tokens.
      *
      * @param user the user for whom the token is generated
      * @return the newly created Token
@@ -50,7 +53,6 @@ public class TokenService {
     }
 
     // -------------------- TOKEN DEACTIVATION --------------------
-
     /**
      * Deactivates all tokens of a given user.
      *
@@ -64,7 +66,6 @@ public class TokenService {
     }
 
     // -------------------- TOKEN DELETION --------------------
-
     /**
      * Deletes all tokens associated with a given user.
      *
@@ -76,15 +77,16 @@ public class TokenService {
     }
 
     // -------------------- TOKEN VALIDATION --------------------
-
     /**
      * Validates a token string for a given user.
      *
-     * @param value          the token value
+     * @param value the token value
      * @param requestingUser the user making the request
      * @return true if the token is valid
-     * @throws ApiException if token is invalid, expired, inactive, or belongs to another user
+     * @throws ApiException if token is invalid, expired, inactive, or belongs
+     * to another user
      */
+    @Transactional
     public boolean validateToken(String value, User requestingUser) {
         Token token = tokenRepository.findByValue(value)
                 .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
@@ -98,10 +100,13 @@ public class TokenService {
         }
 
         if (!token.getUser().equals(requestingUser)) {
-            // Deactivate both users if token belongs to someone else
-            token.getUser().setActive(false);
-            requestingUser.setActive(false);
-            throw new ApiException("Token belongs to another user. Accounts deactivated.", HttpStatus.FORBIDDEN);
+            // Protect admins: never deactivate them
+            userService.deactivateIfNotAdmin(token.getUser());
+            userService.deactivateIfNotAdmin(requestingUser);
+            throw new ApiException(
+                    "Token belongs to another user. Accounts deactivated (except ADMIN).",
+                    HttpStatus.FORBIDDEN
+            );
         }
 
         return true;

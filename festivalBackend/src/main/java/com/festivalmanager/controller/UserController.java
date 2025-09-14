@@ -7,9 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller for managing user-related operations, including
- * registration, authentication, information update, password update,
- * account status management, and user deletion.
+ * REST controller for managing user-related operations, including registration,
+ * authentication, information update, password update, account status
+ * management, and user deletion.
  */
 @RestController
 @RequestMapping("/api/users")
@@ -21,7 +21,8 @@ public class UserController {
     /**
      * Registers a new user in the system.
      *
-     * @param request registration request containing username, full name, and passwords
+     * @param request registration request containing username, full name, and
+     * passwords
      * @return ApiResponse with operation status
      */
     @PostMapping("/register")
@@ -43,7 +44,8 @@ public class UserController {
     /**
      * Updates user information such as username or full name.
      *
-     * @param request update info request containing requester info, token, and optional new data
+     * @param request update info request containing requester info, token, and
+     * optional new data
      * @return ApiResponse with operation status and new token if applicable
      */
     @PostMapping("/updateuserinfo")
@@ -65,7 +67,8 @@ public class UserController {
     /**
      * Updates a user's account status (activation/deactivation).
      *
-     * @param request account status update request containing target username and new status
+     * @param request account status update request containing target username
+     * and new status
      * @return ApiResponse with operation status
      */
     @PostMapping("/updateaccountstatus")
@@ -74,13 +77,29 @@ public class UserController {
     }
 
     /**
-     * Deletes a user account. Can be executed by the user themselves or an admin.
+     * Deletes a user account. Can be executed only by an
+     * admin.
      *
-     * @param request delete user request containing target username (optional) and requester info
+     * @param request delete user request containing target username 
+     * and requester info
      * @return ApiResponse with operation status
      */
     @PostMapping("/deleteuser")
     public ApiResponse<Map<String, Object>> deleteUser(@RequestBody DeleteUserRequest request) {
         return userService.deleteUser(request);
     }
+
+    /**
+     * Simple logout endpoint to logout a user (invalidates the current token
+     * thus ending the session)
+     *
+     * @param request logout User request containing target username 
+     * and requester info
+     * @return ApiResponse with operation status
+     */
+    @PostMapping("/logout")
+    public ApiResponse<Map<String, Object>> logoutUser(@RequestBody LogoutRequest request) {
+        return userService.logOutUser(request);
+    }
+
 }
