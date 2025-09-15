@@ -1,4 +1,4 @@
-package com.festivalmanager.dto;
+package com.festivalmanager.dto.user;
 
 import lombok.Getter;
 import lombok.Setter;

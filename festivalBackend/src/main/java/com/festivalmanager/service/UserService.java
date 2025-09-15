@@ -1,8 +1,15 @@
 package com.festivalmanager.service;
 
-import com.festivalmanager.dto.*;
+import com.festivalmanager.dto.api.ApiResponse;
+import com.festivalmanager.dto.user.DeleteUserRequest;
+import com.festivalmanager.dto.user.RegisterRequest;
+import com.festivalmanager.dto.user.LogoutRequest;
+import com.festivalmanager.dto.user.LoginRequest;
+import com.festivalmanager.dto.user.UpdatePasswordRequest;
+import com.festivalmanager.dto.user.UpdateInfoRequest;
+import com.festivalmanager.dto.user.UpdateAccountStatusRequest;
 import com.festivalmanager.exception.ApiException;
-import com.festivalmanager.model.PermanentRole;
+import com.festivalmanager.enums.PermanentRoleType;
 import com.festivalmanager.model.User;
 import com.festivalmanager.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,10 +80,10 @@ public class UserService {
         user.setFailedPasswordUpdates(0);
 
         if (userRepository.count() == 0) {
-            user.setPermanentRole(PermanentRole.ADMIN);
+            user.setPermanentRole(PermanentRoleType.ADMIN);
             user.setActive(true);
         } else {
-            user.setPermanentRole(PermanentRole.USER);
+            user.setPermanentRole(PermanentRoleType.USER);
             user.setActive(false);
         }
 
@@ -157,7 +164,7 @@ public class UserService {
         if (request.getTargetUsername() == null) {
             targetUser = requester;
         } else {
-            if (requester.getPermanentRole() != PermanentRole.ADMIN) {
+            if (requester.getPermanentRole() != PermanentRoleType.ADMIN) {
                 throw new ApiException("Not authorized to update other users", HttpStatus.FORBIDDEN);
             }
             targetUser = userRepository.findByUsername(request.getTargetUsername())
@@ -263,7 +270,7 @@ public class UserService {
 
         tokenService.validateToken(request.getToken(), requester);
 
-        if (requester.getPermanentRole() != PermanentRole.ADMIN) {
+        if (requester.getPermanentRole() != PermanentRoleType.ADMIN) {
             throw new ApiException("Not authorized to update user accounts", HttpStatus.FORBIDDEN);
         }
 
@@ -305,7 +312,7 @@ public class UserService {
 
         User targetUser;
 
-        if (requester.getPermanentRole() != PermanentRole.ADMIN) {
+        if (requester.getPermanentRole() != PermanentRoleType.ADMIN) {
             throw new ApiException("Not authorized to delete other users", HttpStatus.FORBIDDEN);
         }
         targetUser = userRepository.findByUsername(request.getTargetUsername())

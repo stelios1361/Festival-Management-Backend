@@ -1,4 +1,4 @@
-package com.festivalmanager.dto;
+package com.festivalmanager.dto.api;
 
 import java.time.LocalDateTime;
 

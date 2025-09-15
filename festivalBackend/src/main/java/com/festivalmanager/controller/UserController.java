@@ -1,6 +1,13 @@
 package com.festivalmanager.controller;
 
-import com.festivalmanager.dto.*;
+import com.festivalmanager.dto.api.ApiResponse;
+import com.festivalmanager.dto.user.DeleteUserRequest;
+import com.festivalmanager.dto.user.RegisterRequest;
+import com.festivalmanager.dto.user.LogoutRequest;
+import com.festivalmanager.dto.user.LoginRequest;
+import com.festivalmanager.dto.user.UpdatePasswordRequest;
+import com.festivalmanager.dto.user.UpdateInfoRequest;
+import com.festivalmanager.dto.user.UpdateAccountStatusRequest;
 import com.festivalmanager.service.UserService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;

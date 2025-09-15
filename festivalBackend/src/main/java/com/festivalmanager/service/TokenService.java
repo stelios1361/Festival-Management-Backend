@@ -1,7 +1,7 @@
 package com.festivalmanager.service;
 
 import com.festivalmanager.exception.ApiException;
-import com.festivalmanager.model.PermanentRole;
+import com.festivalmanager.enums.PermanentRoleType;
 import com.festivalmanager.model.Token;
 import com.festivalmanager.model.User;
 import com.festivalmanager.repository.TokenRepository;
@@ -100,11 +100,11 @@ public class TokenService {
 
         if (!token.getUser().equals(requestingUser)) {
             // Protect admins: never deactivate them
-            if (token.getUser().getPermanentRole() != PermanentRole.ADMIN) {
+            if (token.getUser().getPermanentRole() != PermanentRoleType.ADMIN) {
                 token.getUser().setActive(false);
                 userRepository.saveAndFlush(token.getUser());
             }
-            if (requestingUser.getPermanentRole() != PermanentRole.ADMIN) {
+            if (requestingUser.getPermanentRole() != PermanentRoleType.ADMIN) {
                 requestingUser.setActive(false);
                 System.out.println("Yes im here !");
                 userRepository.saveAndFlush(requestingUser);

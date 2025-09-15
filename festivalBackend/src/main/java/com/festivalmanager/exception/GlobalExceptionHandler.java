@@ -1,6 +1,6 @@
 package com.festivalmanager.exception;
 
-import com.festivalmanager.dto.ApiResponse;
+import com.festivalmanager.dto.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;

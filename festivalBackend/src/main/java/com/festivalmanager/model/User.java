@@ -1,5 +1,6 @@
 package com.festivalmanager.model;
 
+import com.festivalmanager.enums.PermanentRoleType;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -30,7 +31,7 @@ public class User {
 
     /** Permanent role assigned to the user */
     @Enumerated(EnumType.STRING)
-    private PermanentRole permanentRole;
+    private PermanentRoleType permanentRole;
 
     /** Whether the user is active */
     private boolean active;

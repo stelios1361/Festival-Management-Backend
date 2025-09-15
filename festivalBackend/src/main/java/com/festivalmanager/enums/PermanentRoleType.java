@@ -1,9 +1,9 @@
-package com.festivalmanager.model;
+package com.festivalmanager.enums;
 
 /**
  * Enum representing the permanent role of a user.
  */
-public enum PermanentRole {
+public enum PermanentRoleType {
     /** Administrator with full access */
     ADMIN,
 
