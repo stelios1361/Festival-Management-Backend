@@ -252,28 +252,50 @@ public class UserService {
 
     // -------------------- DELETE USER --------------------
     /**
-     * Deletes a user account. Admins can delete other users; Deletes all tokens
-     * for the user.
+     * Deletes a user account. Admins can delete other users; a user can delete
+     * their own account. Deletes all tokens for the deleted user.
      *
      * @param request delete user request
      * @return ApiResponse
      */
     public ApiResponse<Map<String, Object>> deleteUser(DeleteUserRequest request) {
+        //Validate requester
         User requester = userSecurityService.validateRequester(
                 request.getRequesterUsername(),
                 request.getToken()
         );
 
-        requireAdmin(requester);
+        User targetUser;
 
-        User targetUser = userRepository.findByUsername(request.getTargetUsername())
-                .orElseThrow(() -> new ApiException("Target user not found", HttpStatus.NOT_FOUND));
+        if (request.getTargetUsername() == null || request.getTargetUsername().isEmpty()) {
+            // Self-deletion
+            targetUser = requester;
+        } else {
+            // Admin deletion
+            requireAdmin(requester); // throws exception if requester is not admin
 
+            targetUser = userRepository.findByUsername(request.getTargetUsername())
+                    .orElseThrow(() -> new ApiException("Target user not found", HttpStatus.NOT_FOUND));
+
+            if (targetUser.equals(requester)) {
+                // Prevent unnecessary self-deletion through targetUsername
+                targetUser = requester;
+            }
+        }
+
+        //Delete tokens
         tokenService.deleteTokens(targetUser);
+
+        //Delete user
         userRepository.delete(targetUser);
 
-        return new ApiResponse<>(LocalDateTime.now(), HttpStatus.OK.value(),
-                "User deleted successfully", new HashMap<>());
+        // 4. Build response
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "User deleted successfully",
+                new HashMap<>()
+        );
     }
 
     // -------------------- LOGOUT USER --------------------
