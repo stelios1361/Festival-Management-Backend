@@ -25,6 +25,7 @@ public class FestivalUserRole {
     @JoinColumn(name = "festival_id", nullable = false)
     private Festival festival;
 
+    
     /** User */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
