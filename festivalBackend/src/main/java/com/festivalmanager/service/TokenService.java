@@ -95,6 +95,8 @@ public class TokenService {
         }
 
         if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+            token.setActive(false);
+            tokenRepository.saveAndFlush(token);
             throw new ApiException("Token expired", HttpStatus.UNAUTHORIZED);
         }
 
@@ -117,6 +119,5 @@ public class TokenService {
 
         return true;
     }
-    
-    
+
 }

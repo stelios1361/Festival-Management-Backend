@@ -93,6 +93,7 @@ public class FestivalService {
         // Check festival name uniqueness
         if (festivalRepository.existsByName(request.getName())) {
             throw new ApiException("Festival with this name already exists", HttpStatus.CONFLICT);
+
         }
 
         // Validate required fields

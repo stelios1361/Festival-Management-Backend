@@ -15,6 +15,7 @@ import com.festivalmanager.dto.festival.AddOrganizersRequest;
 import com.festivalmanager.dto.api.ApiResponse;
 import com.festivalmanager.dto.festival.FestivalSearchRequest;
 import com.festivalmanager.dto.festival.FestivalViewRequest;
+import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.service.FestivalService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +41,7 @@ public class FestivalController {
      * @return ApiResponse with operation status
      */
     @PostMapping("/createfestival")
-    public ApiResponse<Map<String, Object>> createFestival(@RequestBody FestivalCreateRequest request) {
+    public ApiResponse<Map<String, Object>> createFestival(@RequestBody FestivalCreateRequest request) throws ApiException {
         return festivalService.createFestival(request);
     }
 
@@ -52,67 +53,67 @@ public class FestivalController {
      * @return ApiResponse with operation status
      */
     @PutMapping("/updatefestival")
-    public ApiResponse<Map<String, Object>> updateFestival(@RequestBody FestivalUpdateRequest request) {
+    public ApiResponse<Map<String, Object>> updateFestival(@RequestBody FestivalUpdateRequest request) throws ApiException {
         return festivalService.updateFestival(request);
     }
 
     @PostMapping("/addorganizers")
-    public ApiResponse<Map<String, Object>> addOrganizers(@RequestBody AddOrganizersRequest request) {
+    public ApiResponse<Map<String, Object>> addOrganizers(@RequestBody AddOrganizersRequest request) throws ApiException {
         return festivalService.addOrganizers(request);
     }
 
     @PostMapping("/addstaff")
-    public ApiResponse<Map<String, Object>> addStaff(@RequestBody AddStaffRequest request) {
+    public ApiResponse<Map<String, Object>> addStaff(@RequestBody AddStaffRequest request) throws ApiException {
         return festivalService.addStaff(request);
     }
 
     @GetMapping("/searchfestivals")
-    public ApiResponse<Map<String, Object>> searchfestivals(@RequestBody FestivalSearchRequest request) {
+    public ApiResponse<Map<String, Object>> searchfestivals(@RequestBody FestivalSearchRequest request) throws ApiException {
         return festivalService.searchFestivals(request);
     }
 
     @GetMapping("/viewfestival")
-    public ApiResponse<Map<String, Object>> viewfestival(@RequestBody FestivalViewRequest request) {
+    public ApiResponse<Map<String, Object>> viewfestival(@RequestBody FestivalViewRequest request) throws ApiException {
         return festivalService.viewFestival(request);
     }
 
     @DeleteMapping("/deletefestival")
-    public ApiResponse<Map<String, Object>> deleteFestival(@RequestBody FestivalDeleteRequest request) {
+    public ApiResponse<Map<String, Object>> deleteFestival(@RequestBody FestivalDeleteRequest request) throws ApiException {
         return festivalService.deleteFestival(request);
     }
 
     @PostMapping("/startsubmission")
-    public ApiResponse<Map<String, Object>> startSubmission(@RequestBody SubmissionStartRequest request) {
+    public ApiResponse<Map<String, Object>> startSubmission(@RequestBody SubmissionStartRequest request) throws ApiException {
         return festivalService.startSubmission(request);
     }
 
     @PostMapping("/startstagemanagement")
-    public ApiResponse<Map<String, Object>> startStageManagerAssignment(@RequestBody StageManagerAssignmentStartRequest request) {
+    public ApiResponse<Map<String, Object>> startStageManagerAssignment(@RequestBody StageManagerAssignmentStartRequest request) throws ApiException {
         return festivalService.startStageManagerAssignment(request);
     }
 
     @PostMapping("/startreview")
-    public ApiResponse<Map<String, Object>> startReview(@RequestBody ReviewStartRequest request) {
+    public ApiResponse<Map<String, Object>> startReview(@RequestBody ReviewStartRequest request) throws ApiException {
         return festivalService.startReview(request);
     }
 
     @PostMapping("/startscheduling")
-    public ApiResponse<Map<String, Object>> startScheduleMaking(@RequestBody ScheduleMakingRequest request) {
+    public ApiResponse<Map<String, Object>> startScheduleMaking(@RequestBody ScheduleMakingRequest request) throws ApiException {
         return festivalService.startScheduleMaking(request);
     }
 
     @PostMapping("/startfinalsubmission")
-    public ApiResponse<Map<String, Object>> startFinalSubmission(@RequestBody FinalSubmissionStartRequest request) {
+    public ApiResponse<Map<String, Object>> startFinalSubmission(@RequestBody FinalSubmissionStartRequest request) throws ApiException {
         return festivalService.startFinalSubmission(request);
     }
 
     @PostMapping("/makedecision")
-    public ApiResponse<Map<String, Object>> makeDecision(@RequestBody DecisionMakingRequest request) {
+    public ApiResponse<Map<String, Object>> makeDecision(@RequestBody DecisionMakingRequest request) throws ApiException {
         return festivalService.startDecisionMaking(request);
     }
 
     @PostMapping("/announcefestival")
-    public ApiResponse<Map<String, Object>> announceFestival(@RequestBody FestivalAnnouncementRequest request) {
+    public ApiResponse<Map<String, Object>> announceFestival(@RequestBody FestivalAnnouncementRequest request) throws ApiException {
         return festivalService.announceFestival(request);
     }
 
