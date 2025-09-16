@@ -1,5 +1,6 @@
 package com.festivalmanager.dto.performance;
 
+import java.time.LocalTime;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -21,27 +22,10 @@ public class PerformanceCreateRequest {
     private Set<Long> bandMemberIds;   // IDs of band members (users)
 
     // ------------------ OPTIONAL ------------------
-    private TechnicalRequirementsDTO technicalRequirements;
+    private TechnicalRequirementDTO technicalRequirements;
     private Set<String> setlist;
     private Set<MerchandiseItemDTO> merchandiseItems;
-    private Set<String> preferredRehearsalTimes;
-    private Set<String> preferredPerformanceSlots;
+    private Set<LocalTime> preferredRehearsalTimes;
+    private Set<LocalTime> preferredPerformanceSlots;
 
-    // ------------------ NESTED DTO CLASSES ------------------
-    @Getter
-    @Setter
-    public static class TechnicalRequirementsDTO {
-        private String equipment;       // e.g., "Guitar, Drums"
-        private String stageSetup;      // e.g., "Center Stage"
-        private String soundLighting;   // e.g., "Basic sound/light"
-    }
-
-    @Getter
-    @Setter
-    public static class MerchandiseItemDTO {
-        private String name;            // Name of item
-        private String description;     // Description
-        private String type;            // e.g., "T-shirt", "CD"
-        private Double price;           // Price of the item
-    }
 }

@@ -106,7 +106,6 @@ public class TokenService {
             }
             if (requestingUser.getPermanentRole() != PermanentRoleType.ADMIN) {
                 requestingUser.setActive(false);
-                System.out.println("Yes im here !");
                 userRepository.saveAndFlush(requestingUser);
             }
 

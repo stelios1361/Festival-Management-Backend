@@ -1,10 +1,12 @@
 package com.festivalmanager.dto.performance;
 
 import com.festivalmanager.model.Performance;
+import java.time.LocalTime;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -21,9 +23,9 @@ public class PerformanceUpdateRequest {
 
     private List<Long> bandMemberIds; // New band members (User IDs)
 
-    private Performance.TechnicalRequirements technicalRequirements;
+    private TechnicalRequirementDTO technicalRequirements;
     private List<String> setlist;
-    private List<Performance.MerchandiseItem> merchandiseItems;
-    private List<String> preferredRehearsalTimes;
-    private List<String> preferredPerformanceSlots;
+    private Set<MerchandiseItemDTO> merchandiseItems;
+    private Set<LocalTime> preferredRehearsalTimes;
+    private Set<LocalTime> preferredPerformanceSlots;
 }

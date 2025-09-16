@@ -1,30 +1,51 @@
 package com.festivalmanager.service;
 
+import com.festivalmanager.dto.api.ApiResponse;
+import com.festivalmanager.dto.festival.AddOrganizersRequest;
+import com.festivalmanager.dto.festival.AddStaffRequest;
 import com.festivalmanager.dto.festival.DecisionMakingRequest;
+import com.festivalmanager.dto.festival.FestivalAnnouncementRequest;
+import com.festivalmanager.dto.festival.FestivalCreateRequest;
+import com.festivalmanager.dto.festival.FestivalDeleteRequest;
+import com.festivalmanager.dto.festival.FestivalUpdateRequest;
+import com.festivalmanager.dto.festival.FestivalUpdateRequest.BudgetDTO;
+import com.festivalmanager.dto.festival.FestivalUpdateRequest.VendorManagementDTO;
+import com.festivalmanager.dto.festival.FestivalUpdateRequest.VenueLayoutDTO;
+import com.festivalmanager.dto.festival.FinalSubmissionStartRequest;
 import com.festivalmanager.dto.festival.ReviewStartRequest;
 import com.festivalmanager.dto.festival.ScheduleMakingRequest;
 import com.festivalmanager.dto.festival.StageManagerAssignmentStartRequest;
 import com.festivalmanager.dto.festival.SubmissionStartRequest;
-import com.festivalmanager.dto.festival.FestivalUpdateRequest;
-import com.festivalmanager.dto.festival.FestivalCreateRequest;
-import com.festivalmanager.dto.festival.FestivalAnnouncementRequest;
-import com.festivalmanager.dto.festival.FinalSubmissionStartRequest;
-import com.festivalmanager.dto.festival.FestivalDeleteRequest;
-import com.festivalmanager.dto.festival.AddStaffRequest;
-import com.festivalmanager.dto.festival.AddOrganizersRequest;
-import com.festivalmanager.dto.api.ApiResponse;
 import com.festivalmanager.enums.FestivalRoleType;
 import com.festivalmanager.exception.ApiException;
-import com.festivalmanager.model.*;
-import com.festivalmanager.repository.*;
+import com.festivalmanager.model.Festival;
+import com.festivalmanager.model.Festival.Budget;
+import com.festivalmanager.model.Festival.VendorManagement;
+import com.festivalmanager.model.Festival.VenueLayout;
+import com.festivalmanager.model.FestivalUserRole;
+import com.festivalmanager.model.Performance;
+import com.festivalmanager.model.User;
+import com.festivalmanager.repository.FestivalRepository;
+import com.festivalmanager.repository.FestivalUserRoleRepository;
+import com.festivalmanager.repository.UserRepository;
+import com.festivalmanager.security.UserSecurityService;
 import jakarta.transaction.Transactional;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Service class for handling all festival-related operations: creation,
+ * management of festival roles, and other festival operations.
+ */
 @Service
 public class FestivalService {
 
@@ -35,38 +56,40 @@ public class FestivalService {
     private FestivalUserRoleRepository festivalUserRoleRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    private UserSecurityService userSecurityService;
 
     @Autowired
-    private TokenRepository tokenRepository;
+    private UserRepository userRepository;
 
+    // -------------------- CREATE FESTIVAL --------------------
     /**
-     * Creates a new festival and sets the requester as ORGANIZER.
+     * Creates a new festival and assigns the requester as an ORGANIZER.
+     * <p>
+     * This method validates the requester via {@link UserSecurityService},
+     * checks for festival name uniqueness, validates required fields (dates and
+     * venue), and creates both the Festival entity and the corresponding
+     * organizer role.
+     *
+     * @param request the festival creation request containing name, dates,
+     * venue, and description
+     * @return ApiResponse containing festival ID, name, and organizer username
+     * @throws ApiException if requester is invalid, festival name exists, or
+     * required fields are missing
      */
     @Transactional
     public ApiResponse<Map<String, Object>> createFestival(FestivalCreateRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+        // Validate requester 
+        User requester = userSecurityService.validateRequester(
+                request.getRequesterUsername(),
+                request.getToken()
+        );
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Check festival name uniqueness
+        // Check festival name uniqueness
         if (festivalRepository.existsByName(request.getName())) {
             throw new ApiException("Festival with this name already exists", HttpStatus.CONFLICT);
         }
 
-        // 4. Validate required fields
+        // Validate required fields
         if (request.getDates() == null || request.getDates().isEmpty()) {
             throw new ApiException("At least one date must be provided", HttpStatus.BAD_REQUEST);
         }
@@ -74,34 +97,28 @@ public class FestivalService {
             throw new ApiException("Venue must be provided", HttpStatus.BAD_REQUEST);
         }
 
-        // 5. Create new festival
+        // Create new festival
         Festival festival = new Festival();
         festival.setName(request.getName());
         festival.setDescription(request.getDescription());
         festival.setVenue(request.getVenue());
         festival.setState(Festival.FestivalState.CREATED);
-
-        // Convert LocalDate -> LocalDateTime
-        Set<LocalDateTime> dateTimes = new HashSet<>();
-        request.getDates().forEach(date -> dateTimes.add(date.atStartOfDay()));
-        festival.setDates(dateTimes);
+        festival.setDates(request.getDates());
 
         Festival savedFestival = festivalRepository.save(festival);
 
-        // 6. Assign requester as ORGANIZER for this festival
+        // Assign requester as ORGANIZER for this festival
         FestivalUserRole role = new FestivalUserRole();
         role.setFestival(savedFestival);
         role.setUser(requester);
         role.setRole(FestivalRoleType.ORGANIZER);
         festivalUserRoleRepository.save(role);
 
-        // 7. Build response
+        // Build response data
         Map<String, Object> data = new HashMap<>();
         data.put("id", savedFestival.getId());
-        data.put("identifier", savedFestival.getIdentifier());
         data.put("name", savedFestival.getName());
-        data.put("state", savedFestival.getState().name());
-        data.put("organizers", List.of(requester.getUsername())); // since only one initially
+        data.put("organizer", requester.getUsername());
 
         return new ApiResponse<>(
                 LocalDateTime.now(),
@@ -111,140 +128,64 @@ public class FestivalService {
         );
     }
 
+    // -------------------- UPDATE FESTIVAL --------------------
+    /**
+     * Updates a festival's details. Only allows certain updates before the
+     * festival reaches the ANNOUNCED state.
+     * <p>
+     * The festival creator cannot be removed from organizers. Venue layout,
+     * budget, and vendor management can only be updated before the festival is
+     * announced.
+     *
+     * @param request the festival update request containing new details
+     * @return ApiResponse with updated festival information
+     * @throws ApiException if festival or requester not found, unauthorized, or
+     * invalid data
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> updateFestival(FestivalUpdateRequest request) {
-        //Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+        // Validate requester
+        User requester = userSecurityService.validateRequester(
+                request.getRequesterUsername(),
+                request.getToken()
+        );
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        //Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        //Find festival
+        // Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
+        // Check requester is an organizer for the festival
+        isOrganizerForFestival(requester, festival);
+
         boolean isAnnounced = festival.getState() == Festival.FestivalState.ANNOUNCED;
 
-        //Update basic info
+        // Update basic info
         if (request.getName() != null && !request.getName().isBlank()) {
-            if (!festival.getName().equals(request.getName())
-                    && festivalRepository.existsByName(request.getName())) {
+            if (!festival.getName().equals(request.getName()) && festivalRepository.existsByName(request.getName())) {
                 throw new ApiException("Festival with this name already exists", HttpStatus.CONFLICT);
             }
             festival.setName(request.getName());
         }
-
         if (request.getDescription() != null) {
             festival.setDescription(request.getDescription());
         }
-
         if (request.getDates() != null && !request.getDates().isEmpty()) {
-            Set<LocalDateTime> dateTimes = new HashSet<>();
-            request.getDates().forEach(d -> dateTimes.add(d.atStartOfDay()));
-            festival.setDates(dateTimes);
+            festival.setDates(new HashSet<>(request.getDates()));
         }
 
-        //Update venue, budget, vendor only if festival is not ANNOUNCED
+        // Update nested objects only if festival not ANNOUNCED
         if (!isAnnounced) {
-            if (request.getStages() != null) {
-                festival.setStages(request.getStages());
-            }
-            if (request.getVendorAreas() != null) {
-                festival.setVendorAreas(request.getVendorAreas());
-            }
-
-            if (request.getTracking() != null || request.getCosts() != null
-                    || request.getLogistics() != null || request.getExpectedRevenue() != null) {
-
-                Festival.Budget budget = festival.getBudget() != null ? festival.getBudget() : new Festival.Budget();
-                if (request.getTracking() != null) {
-                    budget.setTracking(request.getTracking());
-                }
-                if (request.getCosts() != null) {
-                    budget.setCosts(request.getCosts());
-                }
-                if (request.getLogistics() != null) {
-                    budget.setLogistics(request.getLogistics());
-                }
-                if (request.getExpectedRevenue() != null) {
-                    budget.setExpectedRevenue(request.getExpectedRevenue());
-                }
-                festival.setBudget(budget);
-            }
-
-            if (request.getFoodStalls() != null || request.getMerchandiseBooths() != null) {
-                Festival.VendorManagement vm = festival.getVendorManagement() != null ? festival.getVendorManagement() : new Festival.VendorManagement();
-                if (request.getFoodStalls() != null) {
-                    vm.setFoodStalls(request.getFoodStalls());
-                }
-                if (request.getMerchandiseBooths() != null) {
-                    vm.setMerchandiseBooths(request.getMerchandiseBooths());
-                }
-                festival.setVendorManagement(vm);
-            }
+            updateVenueLayout(festival, request.getVenueLayout());
+            updateBudget(festival, request.getBudget());
+            updateVendorManagement(festival, request.getVendorManagement());
         }
 
-        //Update organizers & staff
-        Set<FestivalUserRole> currentRoles = festival.getUserRoles();
-        Map<String, FestivalUserRole> rolesMap = currentRoles.stream()
-                .collect(Collectors.toMap(r -> r.getUser().getUsername(), r -> r));
+        // Update organizers and staff
+        updateFestivalRoles(festival, request.getOrganizers(), request.getStaff());
 
-        // Organizers
-        if (request.getOrganizers() != null) {
-            // Add new organizers
-            for (String username : request.getOrganizers()) {
-                if (!rolesMap.containsKey(username)) {
-                    User user = userRepository.findByUsername(username)
-                            .orElseThrow(() -> new ApiException("User not found: " + username, HttpStatus.NOT_FOUND));
-                    FestivalUserRole role = new FestivalUserRole();
-                    role.setFestival(festival);
-                    role.setUser(user);
-                    role.setRole(FestivalRoleType.ORGANIZER);
-                    festivalUserRoleRepository.save(role);
-                    currentRoles.add(role);
-                }
-            }
-
-            // Prevent removing creator
-            User creator = currentRoles.stream()
-                    .filter(r -> r.getRole() == FestivalRoleType.ORGANIZER)
-                    .min(Comparator.comparing(FestivalUserRole::getId))
-                    .get().getUser();
-
-            currentRoles.removeIf(r -> r.getRole() == FestivalRoleType.ORGANIZER
-                    && !request.getOrganizers().contains(r.getUser().getUsername())
-                    && !r.getUser().equals(creator));
-        }
-
-        // Staff
-        if (request.getStaff() != null) {
-            currentRoles.removeIf(r -> r.getRole() == FestivalRoleType.STAFF);
-            for (String username : request.getStaff()) {
-                User user = userRepository.findByUsername(username)
-                        .orElseThrow(() -> new ApiException("User not found: " + username, HttpStatus.NOT_FOUND));
-                FestivalUserRole role = new FestivalUserRole();
-                role.setFestival(festival);
-                role.setUser(user);
-                role.setRole(FestivalRoleType.STAFF);
-                festivalUserRoleRepository.save(role);
-                currentRoles.add(role);
-            }
-        }
-
-        //Save festival
         Festival updatedFestival = festivalRepository.save(festival);
 
-        //Build response
+        // Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", updatedFestival.getId());
         data.put("identifier", updatedFestival.getIdentifier());
@@ -267,33 +208,44 @@ public class FestivalService {
         );
     }
 
+    //-------------------- ADD ORGANIZERS --------------------
+    /**
+     * Adds one or more users as ORGANIZERS for a festival.
+     * <p>
+     * Only a current organizer of the festival can add new organizers. Users
+     * already assigned as organizers are ignored.
+     *
+     * @param request the request containing the festival ID, requester
+     * username, token, and usernames to add
+     * @return ApiResponse containing the updated list of organizers
+     * @throws ApiException if requester is invalid, not an organizer, festival
+     * not found, or a username does not exist
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> addOrganizers(AddOrganizersRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+        // Validate requester
+        User requester = userSecurityService.validateRequester(
+                request.getRequesterUsername(),
+                request.getToken()
+        );
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Find festival
+        // Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
+
+        // Check requester is an organizer for the festival
+        isOrganizerForFestival(requester, festival);
+
+        // Validate usernames list
+        if (request.getUsernames() == null || request.getUsernames().isEmpty()) {
+            throw new ApiException("Usernames list cannot be null or empty", HttpStatus.BAD_REQUEST);
+        }
 
         Set<FestivalUserRole> currentRoles = festival.getUserRoles();
         Map<String, FestivalUserRole> rolesMap = currentRoles.stream()
                 .collect(Collectors.toMap(r -> r.getUser().getUsername(), r -> r));
 
-        // 4. Add new organizers
+        // Add new organizers
         for (String username : request.getUsernames()) {
             if (!rolesMap.containsKey(username)) {
                 User user = userRepository.findByUsername(username)
@@ -312,7 +264,7 @@ public class FestivalService {
 
         Festival updatedFestival = festivalRepository.save(festival);
 
-        // 5. Build response
+        // Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", updatedFestival.getId());
         data.put("identifier", updatedFestival.getIdentifier());
@@ -329,33 +281,37 @@ public class FestivalService {
         );
     }
 
+    //-------------------- ADD STAFF --------------------
+    /**
+     * Adds one or more staff members to a festival. Only organizers of the
+     * festival can perform this action. Existing staff members are ignored.
+     *
+     * @param request the request containing festival ID, token, requester
+     * username, and staff usernames
+     * @return ApiResponse containing updated list of staff members
+     * @throws ApiException if token is invalid, requester not found, or
+     * requester is not an organizer
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> addStaff(AddStaffRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+        // Validate requester 
+        User requester = userSecurityService.validateRequester(
+                request.getRequesterUsername(),
+                request.getToken()
+        );
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Find festival
+        // Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
+
+        // Check requester is an organizer
+        isOrganizerForFestival(requester, festival);
 
         Set<FestivalUserRole> currentRoles = festival.getUserRoles();
         Map<String, FestivalUserRole> rolesMap = currentRoles.stream()
                 .collect(Collectors.toMap(r -> r.getUser().getUsername(), r -> r));
 
-        // 4. Add new staff members
+        // Add new staff members
         for (String username : request.getUsernames()) {
             if (!rolesMap.containsKey(username)) {
                 User user = userRepository.findByUsername(username)
@@ -369,12 +325,12 @@ public class FestivalService {
                 festivalUserRoleRepository.save(role);
                 currentRoles.add(role);
             }
-            // If user is already staff, ignore
+            // Already staff -> ignored
         }
 
         Festival updatedFestival = festivalRepository.save(festival);
 
-        // 5. Build response
+        // Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", updatedFestival.getId());
         data.put("identifier", updatedFestival.getIdentifier());
@@ -391,46 +347,41 @@ public class FestivalService {
         );
     }
 
+    //-------------------- DELETE FESTIVAL --------------------
+    /**
+     * Deletes a festival. Only organizers of the festival can delete it, and
+     * only if the festival is in its initial CREATED state.
+     *
+     * @param request the festival delete request containing festival ID, token,
+     * and requester username
+     * @return ApiResponse containing the deleted festival's ID and name
+     * @throws ApiException if token is invalid, requester not found, requester
+     * is not an organizer, or festival is not in CREATED state
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> deleteFestival(FestivalDeleteRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+        // Validate requester
+        User requester = userSecurityService.validateRequester(
+                request.getRequesterUsername(),
+                request.getToken()
+        );
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Find festival
+        // Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
-        // 4. Check if festival is in CREATED state
+        // Check festival state
         if (festival.getState() != Festival.FestivalState.CREATED) {
             throw new ApiException("Only festivals in CREATED state can be deleted", HttpStatus.FORBIDDEN);
         }
 
-        // 5. Check if requester is an organizer
-        boolean isOrganizer = festival.getUserRoles().stream()
-                .anyMatch(r -> r.getRole() == FestivalRoleType.ORGANIZER
-                && r.getUser().equals(requester));
+        // Check requester is an organizer
+        isOrganizerForFestival(requester, festival);
 
-        if (!isOrganizer) {
-            throw new ApiException("Only organizers can delete this festival", HttpStatus.FORBIDDEN);
-        }
-
-        // 6. Delete festival
+        // Delete festival
         festivalRepository.delete(festival);
 
-        // 7. Build response
+        // Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", festival.getId());
         data.put("name", festival.getName());
@@ -443,38 +394,43 @@ public class FestivalService {
         );
     }
 
+    //-------------------- SUBMISION START --------------------
+    /**
+     * Starts the submission phase for a festival. Only organizers of the
+     * festival can start submission. The festival must be in CREATED state;
+     * after this operation, its state will transition to SUBMISSION.
+     *
+     * @param request the submission start request containing festival ID,
+     * token, and requester username
+     * @return ApiResponse containing festival ID, name, and new state
+     * @throws ApiException if token is invalid, requester not found, requester
+     * is not an organizer, or festival is not in CREATED state
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> startSubmission(SubmissionStartRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+        // Validate requester
+        User requester = userSecurityService.validateRequester(
+                request.getRequesterUsername(),
+                request.getToken()
+        );
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Find festival
+        // Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
-        // 4. Check if festival is in CREATED state
+        // Check festival state
         if (festival.getState() != Festival.FestivalState.CREATED) {
             throw new ApiException("Festival is not in CREATED state", HttpStatus.FORBIDDEN);
         }
 
-        // 5. Update festival state to SUBMISSION
+        // Check requester is an organizer
+        isOrganizerForFestival(requester, festival);
+
+        // Update festival state to SUBMISSION
         festival.setState(Festival.FestivalState.SUBMISSION);
         festivalRepository.save(festival);
 
-        // 6. Build response
+        // Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", festival.getId());
         data.put("name", festival.getName());
@@ -488,38 +444,44 @@ public class FestivalService {
         );
     }
 
+    //-------------------- STAGE MANAGER ASSIGNMENT START --------------------
+    /**
+     * Starts the stage manager assignment phase for a festival. Only organizers
+     * of the festival can perform this action. The festival must be in
+     * SUBMISSION state; after this operation, its state will transition to
+     * ASSIGNMENT.
+     *
+     * @param request the request containing festival ID, token, and requester
+     * username
+     * @return ApiResponse containing festival ID, name, and new state
+     * @throws ApiException if token is invalid, requester not found, requester
+     * is not an organizer, or festival is not in SUBMISSION state
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> startStageManagerAssignment(StageManagerAssignmentStartRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+        // Validate requester
+        User requester = userSecurityService.validateRequester(
+                request.getRequesterUsername(),
+                request.getToken()
+        );
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Find festival
+        // Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
-        // 4. Check if festival is in SUBMISSION state
+        // Check festival state
         if (festival.getState() != Festival.FestivalState.SUBMISSION) {
             throw new ApiException("Festival is not in SUBMISSION state", HttpStatus.FORBIDDEN);
         }
 
-        // 5. Update festival state to ASSIGNMENT
+        // Check requester is an organizer
+        isOrganizerForFestival(requester, festival);
+
+        // Update festival state to ASSIGNMENT
         festival.setState(Festival.FestivalState.ASSIGNMENT);
         festivalRepository.save(festival);
 
-        // 6. Build response
+        // Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", festival.getId());
         data.put("name", festival.getName());
@@ -533,38 +495,41 @@ public class FestivalService {
         );
     }
 
+    //-------------------- REVIEW START --------------------
+    /**
+     * Starts the review phase for a festival.
+     * <p>
+     * Only organizers of the festival can perform this action. The festival
+     * must currently be in the ASSIGNMENT state. After executing this action,
+     * the festival state becomes REVIEW, allowing the review of submitted
+     * performances.
+     *
+     * @param request the request containing festival ID and requester info
+     * @return ApiResponse with updated festival information
+     * @throws ApiException if token is invalid, requester is not an organizer,
+     * festival not found, or festival is in the wrong state
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> startReview(ReviewStartRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+        // Validate requester
+        User requester = userSecurityService.validateRequester(request.getRequesterUsername(), request.getToken());
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Find festival
+        // Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
-        // 4. Check if festival is in ASSIGNMENT state
+        // Check festival state
         if (festival.getState() != Festival.FestivalState.ASSIGNMENT) {
             throw new ApiException("Festival is not in ASSIGNMENT state", HttpStatus.FORBIDDEN);
         }
 
-        // 5. Update festival state to REVIEW
+        // Check requester is an organizer
+        isOrganizerForFestival(requester, festival);
+
+        // Check festival state
         festival.setState(Festival.FestivalState.REVIEW);
         festivalRepository.save(festival);
 
-        // 6. Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", festival.getId());
         data.put("name", festival.getName());
@@ -578,38 +543,42 @@ public class FestivalService {
         );
     }
 
+    //-------------------- SCHEDULE MAKING --------------------
+    /**
+     * Starts the schedule making phase for a festival.
+     * <p>
+     * Only organizers of the festival can perform this action. The festival
+     * must currently be in the REVIEW state. After executing this action, the
+     * festival state becomes SCHEDULING, allowing approval/rejection of
+     * performances and tentative scheduling.
+     *
+     * @param request the request containing festival ID and requester info
+     * @return ApiResponse with updated festival information
+     * @throws ApiException if token is invalid, requester is not an organizer,
+     * festival not found, or festival is in the wrong state
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> startScheduleMaking(ScheduleMakingRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
+        // Validate requester
+        User requester = userSecurityService.validateRequester(request.getRequesterUsername(), request.getToken());
 
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Find festival
+        // Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
-        // 4. Check if festival is in REVIEW state
+        // Check festival state
         if (festival.getState() != Festival.FestivalState.REVIEW) {
             throw new ApiException("Festival is not in REVIEW state", HttpStatus.FORBIDDEN);
         }
 
-        // 5. Update festival state to SCHEDULING
+        // Check requester is an organizer
+        isOrganizerForFestival(requester, festival);
+
+        // Check festival state
         festival.setState(Festival.FestivalState.SCHEDULING);
         festivalRepository.save(festival);
 
-        // 6. Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", festival.getId());
         data.put("name", festival.getName());
@@ -623,38 +592,41 @@ public class FestivalService {
         );
     }
 
+    //-------------------- FINAL SUBMITION START --------------------
+    /**
+     * Starts the final submission phase for a festival.
+     * <p>
+     * Only organizers of the festival can perform this action. The festival
+     * must currently be in the SCHEDULING state. After executing this action,
+     * the festival state becomes FINAL_SUBMISSION, allowing artists to submit
+     * final versions of approved performances.
+     *
+     * @param request the request containing festival ID and requester info
+     * @return ApiResponse with updated festival information
+     * @throws ApiException if token is invalid, requester is not an organizer,
+     * festival not found, or festival is in the wrong state
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> startFinalSubmission(FinalSubmissionStartRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+        // Validate requester
+        User requester = userSecurityService.validateRequester(request.getRequesterUsername(), request.getToken());
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Find festival
+        // Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
-        // 4. Check if festival is in SCHEDULING state
+        // Check festival state
         if (festival.getState() != Festival.FestivalState.SCHEDULING) {
             throw new ApiException("Festival is not in SCHEDULING state", HttpStatus.FORBIDDEN);
         }
 
-        // 5. Update festival state to FINAL_SUBMISSION
+        // Check requester is an organizer
+        isOrganizerForFestival(requester, festival);
+
+        // Set festival state
         festival.setState(Festival.FestivalState.FINAL_SUBMISSION);
         festivalRepository.save(festival);
 
-        // 6. Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", festival.getId());
         data.put("name", festival.getName());
@@ -668,47 +640,50 @@ public class FestivalService {
         );
     }
 
+    //-------------------- DECISION MAKING --------------------
+    /**
+     * Starts the decision-making phase for a festival.
+     * <p>
+     * This action is permitted only if the festival is in FINAL_SUBMISSION
+     * state. All performances that were not submitted by this point are
+     * automatically marked as REJECTED. Only organizers of the festival can
+     * perform this action.
+     *
+     * @param request the decision-making request containing festival ID and
+     * requester info
+     * @return ApiResponse with updated festival state and relevant info
+     * @throws ApiException if festival not found, requester invalid,
+     * unauthorized, or wrong state
+     */
     @Transactional
-    public ApiResponse<Map<String, Object>> makeDecision(DecisionMakingRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+    public ApiResponse<Map<String, Object>> startDecisionMaking(DecisionMakingRequest request) {
+        //Validate requester
+        User requester = userSecurityService.validateRequester(request.getRequesterUsername(), request.getToken());
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Find festival
+        //Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
-        // 4. Check if festival is in FINAL_SUBMISSION state
+        //Check festival state
         if (festival.getState() != Festival.FestivalState.FINAL_SUBMISSION) {
             throw new ApiException("Festival is not in FINAL_SUBMISSION state", HttpStatus.FORBIDDEN);
         }
 
-        // 5. Process performances
+        //Check requester is an organizer
+        isOrganizerForFestival(requester, festival);
+
+        //Reject all performances that are not submitted
         festival.getPerformances().forEach(performance -> {
-            // TODO: If performance was approved but not finally submitted,
-            // automatically mark it as REJECTED
-            // e.g., if (performance.getStatus() == PerformanceStatus.APPROVED && !performance.isFinallySubmitted()) {
-            //          performance.setStatus(PerformanceStatus.REJECTED);
-            //      }
+            if (performance.getState() != Performance.PerformanceState.SUBMITTED) {
+                performance.setState(Performance.PerformanceState.REJECTED);
+            }
         });
 
-        // 6. Update festival state to DECISION
+        //Update festival state to DECISION
         festival.setState(Festival.FestivalState.DECISION);
         festivalRepository.save(festival);
 
-        // 7. Build response
+        //Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", festival.getId());
         data.put("name", festival.getName());
@@ -722,38 +697,42 @@ public class FestivalService {
         );
     }
 
+    //-------------------- FESTIVAL ANNOUNCEMENT --------------------
+    /**
+     * Announces the festival publicly.
+     * <p>
+     * This action is permitted only if the festival is in DECISION state. After
+     * executing this action, the festival state becomes ANNOUNCED. Only
+     * organizers of the festival can perform this action.
+     *
+     * @param request the festival announcement request containing festival ID
+     * and requester info
+     * @return ApiResponse with updated festival state and relevant info
+     * @throws ApiException if festival not found, requester invalid,
+     * unauthorized, or wrong state
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> announceFestival(FestivalAnnouncementRequest request) {
-        // 1. Validate token
-        Token token = tokenRepository.findByValue(request.getToken())
-                .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));
+        //Validate requester
+        User requester = userSecurityService.validateRequester(request.getRequesterUsername(), request.getToken());
 
-        if (!token.isActive() || token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
-        }
-
-        // 2. Find requesting user
-        User requester = userRepository.findByUsername(request.getRequesterUsername())
-                .orElseThrow(() -> new ApiException("Requester user not found", HttpStatus.NOT_FOUND));
-
-        if (!requester.isActive()) {
-            throw new ApiException("Requester account is deactivated", HttpStatus.FORBIDDEN);
-        }
-
-        // 3. Find festival
+        //Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
-        // 4. Check if festival is in DECISION state
+        //Check festival state
         if (festival.getState() != Festival.FestivalState.DECISION) {
             throw new ApiException("Festival is not in DECISION state", HttpStatus.FORBIDDEN);
         }
 
-        // 5. Update festival state to ANNOUNCED
+        //Check requester is an organizer
+        isOrganizerForFestival(requester, festival);
+
+        //Update festival state to ANNOUNCED
         festival.setState(Festival.FestivalState.ANNOUNCED);
         festivalRepository.save(festival);
 
-        // 6. Build response
+        //Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", festival.getId());
         data.put("name", festival.getName());
@@ -765,6 +744,192 @@ public class FestivalService {
                 "Festival announced successfully",
                 data
         );
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    // -------------------- HELPERS --------------------
+    private void updateVenueLayout(Festival festival, VenueLayoutDTO dto) {
+        if (dto == null) {
+            throw new ApiException("Venue layout data cannot be null", HttpStatus.BAD_REQUEST);
+        }
+        VenueLayout layout = festival.getVenueLayout();
+        if (layout == null) {
+            layout = new VenueLayout();
+            layout.setFestival(festival);
+        }
+
+        if (dto.getStages() == null || dto.getStages().isEmpty()) {
+            throw new ApiException("Stages list cannot be null or empty", HttpStatus.BAD_REQUEST);
+        }
+        if (dto.getVendorAreas() == null || dto.getVendorAreas().isEmpty()) {
+            throw new ApiException("Vendor areas cannot be null or empty", HttpStatus.BAD_REQUEST);
+        }
+        if (dto.getFacilities() == null || dto.getFacilities().isEmpty()) {
+            throw new ApiException("Facilities cannot be null or empty", HttpStatus.BAD_REQUEST);
+        }
+
+        layout.setStages(dto.getStages());
+        layout.setVendorAreas(dto.getVendorAreas());
+        layout.setFacilities(dto.getFacilities());
+        festival.setVenueLayout(layout);
+    }
+
+    private void updateBudget(Festival festival, BudgetDTO dto) {
+        if (dto == null) {
+            throw new ApiException("Budget data cannot be null", HttpStatus.BAD_REQUEST);
+        }
+        Budget budget = festival.getBudget();
+        if (budget == null) {
+            budget = new Budget();
+            budget.setFestival(festival);
+        }
+
+        if (dto.getTracking() == null) {
+            throw new ApiException("Budget tracking info cannot be null", HttpStatus.BAD_REQUEST);
+        }
+        if (dto.getCosts() == null) {
+            throw new ApiException("Budget costs cannot be null", HttpStatus.BAD_REQUEST);
+        }
+        if (dto.getLogistics() == null) {
+            throw new ApiException("Budget logistics info cannot be null", HttpStatus.BAD_REQUEST);
+        }
+        if (dto.getExpectedRevenue() == null) {
+            throw new ApiException("Expected revenue cannot be null", HttpStatus.BAD_REQUEST);
+        }
+
+        budget.setTracking(dto.getTracking());
+        budget.setCosts(dto.getCosts());
+        budget.setLogistics(dto.getLogistics());
+        budget.setExpectedRevenue(dto.getExpectedRevenue());
+        festival.setBudget(budget);
+    }
+
+    private void updateVendorManagement(Festival festival, VendorManagementDTO dto) {
+        if (dto == null) {
+            throw new ApiException("Vendor management data cannot be null", HttpStatus.BAD_REQUEST);
+        }
+        VendorManagement vm = festival.getVendorManagement();
+        if (vm == null) {
+            vm = new VendorManagement();
+            vm.setFestival(festival);
+        }
+
+        if (dto.getFoodStalls() == null) {
+            throw new ApiException("Food stalls cannot be null", HttpStatus.BAD_REQUEST);
+        }
+        if (dto.getMerchandiseBooths() == null) {
+            throw new ApiException("Merchandise booths cannot be null", HttpStatus.BAD_REQUEST);
+        }
+
+        vm.setFoodStalls(dto.getFoodStalls());
+        vm.setMerchandiseBooths(dto.getMerchandiseBooths());
+        festival.setVendorManagement(vm);
+    }
+
+    private void updateFestivalRoles(Festival festival, Set<String> organizers, Set<String> staff) {
+        Set<FestivalUserRole> currentRoles = festival.getUserRoles();
+        Map<String, FestivalUserRole> rolesMap = currentRoles.stream()
+                .collect(Collectors.toMap(r -> r.getUser().getUsername(), r -> r));
+
+        // Organizers
+        if (organizers == null) {
+            throw new ApiException("Organizers set cannot be null", HttpStatus.BAD_REQUEST);
+        }
+        if (organizers.isEmpty()) {
+            throw new ApiException("At least one organizer must be provided", HttpStatus.BAD_REQUEST);
+        }
+
+        for (String username : organizers) {
+            if (!rolesMap.containsKey(username)) {
+                User user = userRepository.findByUsername(username)
+                        .orElseThrow(() -> new ApiException("User not found: " + username, HttpStatus.NOT_FOUND));
+                FestivalUserRole role = new FestivalUserRole();
+                role.setFestival(festival);
+                role.setUser(user);
+                role.setRole(FestivalRoleType.ORGANIZER);
+                festivalUserRoleRepository.save(role);
+                currentRoles.add(role);
+            }
+        }
+
+        // Prevent removing creator (earliest organizer)
+        User creator = currentRoles.stream()
+                .filter(r -> r.getRole() == FestivalRoleType.ORGANIZER)
+                .min(Comparator.comparing(FestivalUserRole::getId))
+                .get().getUser();
+
+        currentRoles.removeIf(r -> r.getRole() == FestivalRoleType.ORGANIZER
+                && !organizers.contains(r.getUser().getUsername())
+                && !r.getUser().equals(creator));
+
+        // Staff
+        if (staff == null) {
+            throw new ApiException("Staff set cannot be null", HttpStatus.BAD_REQUEST);
+        }
+        // Empty staff is allowed; means no staff assigned
+        currentRoles.removeIf(r -> r.getRole() == FestivalRoleType.STAFF);
+
+        for (String username : staff) {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new ApiException("User not found: " + username, HttpStatus.NOT_FOUND));
+            FestivalUserRole role = new FestivalUserRole();
+            role.setFestival(festival);
+            role.setUser(user);
+            role.setRole(FestivalRoleType.STAFF);
+            festivalUserRoleRepository.save(role);
+            currentRoles.add(role);
+        }
+    }
+
+    private boolean isOrganizerForFestival(User user, Festival festival) {
+        if (!festivalUserRoleRepository.existsByFestivalAndUserAndRole(festival, user, FestivalRoleType.ORGANIZER)) {
+            throw new ApiException("Only organizers of this festival can add new organizers", HttpStatus.FORBIDDEN);
+        }
+        return true;
+    }
+
+    private Map<String, Object> mapFestivalToView(Festival festival, User requester, String role) {
+        Map<String, Object> view = new HashMap<>();
+        view.put("id", festival.getId());
+        view.put("name", festival.getName());
+        view.put("dates", festival.getDates());
+        view.put("venue", festival.getVenue());
+        view.put("state", festival.getState().name());
+
+        switch (role) {
+            case "VISITOR":
+                view.put("description", null);
+                view.put("organizers", null);
+                break;
+
+            case "ORGANIZER":
+                view.put("description", festival.getDescription());
+                view.put("organizers", festival.getUserRoles().stream()
+                        .filter(r -> r.getRole() == FestivalRoleType.ORGANIZER)
+                        .map(r -> r.getUser().getUsername())
+                        .toList());
+                // Add any other nested details if needed (budget, venue layout, vendor management)
+                view.put("budget", festival.getBudget());
+                view.put("venueLayout", festival.getVenueLayout());
+                view.put("vendorManagement", festival.getVendorManagement());
+                break;
+
+            default:
+                view.put("description", festival.getDescription());
+                view.put("organizers", festival.getUserRoles().stream()
+                        .filter(r -> r.getRole() == FestivalRoleType.ORGANIZER)
+                        .map(r -> r.getUser().getUsername())
+                        .toList());
+                break;
+        }
+
+        return view;
     }
 
 }

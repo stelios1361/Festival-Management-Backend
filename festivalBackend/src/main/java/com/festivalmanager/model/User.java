@@ -2,8 +2,6 @@ package com.festivalmanager.model;
 
 import com.festivalmanager.enums.PermanentRoleType;
 import jakarta.persistence.*;
-
-import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -41,8 +39,5 @@ public class User {
 
     /** Failed password update attempts counter */
     private int failedPasswordUpdates;
-
-    /** Lock expiration timestamp, if account is locked */
-    private LocalDateTime lockedUntil;
 
 }

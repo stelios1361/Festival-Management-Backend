@@ -96,7 +96,7 @@ public class FestivalController {
 
     @PostMapping("/makedecision")
     public ApiResponse<Map<String, Object>> makeDecision(@RequestBody DecisionMakingRequest request) {
-        return festivalService.makeDecision(request);
+        return festivalService.startDecisionMaking(request);
     }
 
     @PostMapping("/announcefestival")

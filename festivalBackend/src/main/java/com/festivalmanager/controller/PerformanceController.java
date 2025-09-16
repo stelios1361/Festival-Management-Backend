@@ -13,24 +13,24 @@ import org.springframework.beans.factory.annotation.Autowired;
 @RequestMapping("/api/performance")
 public class PerformanceController {
 
-    @Autowired
-    private PerformanceService performanceService;
-
-    /**
-     * Creates a new performance in a specific festival.
-     *
-     * @param request the performance creation request containing required
-     * information about the performance
-     * @return ApiResponse with operation status and performance info
-     */
-    @PostMapping("/create")
-    public ApiResponse<Map<String, Object>> createPerformance(@RequestBody PerformanceCreateRequest request) {
-        return performanceService.createPerformance(request);
-    }
-
-    @PutMapping("/update")
-    public ApiResponse<Map<String, Object>> updatePerformance(@RequestBody PerformanceUpdateRequest request) {
-        return performanceService.updatePerformance(request);
-    }
+//    @Autowired
+//    private PerformanceService performanceService;
+//
+//    /**
+//     * Creates a new performance in a specific festival.
+//     *
+//     * @param request the performance creation request containing required
+//     * information about the performance
+//     * @return ApiResponse with operation status and performance info
+//     */
+//    @PostMapping("/create")
+//    public ApiResponse<Map<String, Object>> createPerformance(@RequestBody PerformanceCreateRequest request) {
+//        return performanceService.createPerformance(request);
+//    }
+//
+//    @PutMapping("/update")
+//    public ApiResponse<Map<String, Object>> updatePerformance(@RequestBody PerformanceUpdateRequest request) {
+//        return performanceService.updatePerformance(request);
+//    }
 
 }

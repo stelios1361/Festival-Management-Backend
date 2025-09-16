@@ -1,7 +1,6 @@
 package com.festivalmanager.dto.festival;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,26 +14,47 @@ public class FestivalUpdateRequest {
 
     private Long festivalId;          // Festival to update
 
-    // Updatable fields
+    // Updatable main fields
     private String name;
     private String description;
-    private List<LocalDate> dates;
+    private Set<LocalDate> dates;
 
-    // Venue layout
-    private Set<String> stages;
-    private Set<String> vendorAreas;
+    // Nested DTOs for better structure
+    private VenueLayoutDTO venueLayout;
+    private BudgetDTO budget;
+    private VendorManagementDTO vendorManagement;
 
-    // Budget
-    private Double tracking;
-    private Double costs;
-    private Double logistics;
-    private Double expectedRevenue;
+    private Set<String> organizers; // usernames
+    private Set<String> staff;      // usernames
 
-    // Vendor management
-    private Set<String> foodStalls;
-    private Set<String> merchandiseBooths;
+    @Getter
+    @Setter
+    public static class VenueLayoutDTO {
 
-    // Staff and organizers (usernames)
-    private Set<String> organizers;
-    private Set<String> staff;
+        private Set<String> stages;
+        private Set<String> vendorAreas;
+        private Set<String> facilities; // New field
+    }
+
+    @Getter
+    @Setter
+    public static class BudgetDTO {
+
+        private Double tracking;
+        private Double costs;
+        private Double logistics;
+        private Double expectedRevenue;
+    }
+
+    @Getter
+    @Setter
+    public static class VendorManagementDTO {
+
+        private Set<String> foodStalls;
+        private Set<String> merchandiseBooths;
+    }
 }
+
+
+
+
