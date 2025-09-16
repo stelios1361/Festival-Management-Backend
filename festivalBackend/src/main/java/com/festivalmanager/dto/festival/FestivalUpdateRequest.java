@@ -26,7 +26,8 @@ public class FestivalUpdateRequest {
 
     private Set<String> organizers; // usernames
     private Set<String> staff;      // usernames
-
+ 
+    
     @Getter
     @Setter
     public static class VenueLayoutDTO {
