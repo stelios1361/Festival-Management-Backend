@@ -1,5 +1,6 @@
 package com.festivalmanager.service;
 
+import com.festivalmanager.model.VendorManagement;
 import com.festivalmanager.dto.api.ApiResponse;
 import com.festivalmanager.dto.festival.AddOrganizersRequest;
 import com.festivalmanager.dto.festival.AddStaffRequest;
@@ -18,13 +19,12 @@ import com.festivalmanager.dto.festival.StageManagerAssignmentStartRequest;
 import com.festivalmanager.dto.festival.SubmissionStartRequest;
 import com.festivalmanager.enums.FestivalRoleType;
 import com.festivalmanager.exception.ApiException;
+import com.festivalmanager.model.Budget;
 import com.festivalmanager.model.Festival;
-import com.festivalmanager.model.Festival.Budget;
-import com.festivalmanager.model.Festival.VendorManagement;
-import com.festivalmanager.model.Festival.VenueLayout;
 import com.festivalmanager.model.FestivalUserRole;
 import com.festivalmanager.model.Performance;
 import com.festivalmanager.model.User;
+import com.festivalmanager.model.VenueLayout;
 import com.festivalmanager.repository.FestivalRepository;
 import com.festivalmanager.repository.FestivalUserRoleRepository;
 import com.festivalmanager.repository.UserRepository;
