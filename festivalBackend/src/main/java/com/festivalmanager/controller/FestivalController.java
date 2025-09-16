@@ -13,6 +13,8 @@ import com.festivalmanager.dto.festival.FestivalDeleteRequest;
 import com.festivalmanager.dto.festival.AddStaffRequest;
 import com.festivalmanager.dto.festival.AddOrganizersRequest;
 import com.festivalmanager.dto.api.ApiResponse;
+import com.festivalmanager.dto.festival.FestivalSearchRequest;
+import com.festivalmanager.dto.festival.FestivalViewRequest;
 import com.festivalmanager.service.FestivalService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +64,16 @@ public class FestivalController {
     @PostMapping("/addstaff")
     public ApiResponse<Map<String, Object>> addStaff(@RequestBody AddStaffRequest request) {
         return festivalService.addStaff(request);
+    }
+
+    @GetMapping("/searchfestivals")
+    public ApiResponse<Map<String, Object>> searchfestivals(@RequestBody FestivalSearchRequest request) {
+        return festivalService.searchFestivals(request);
+    }
+
+    @GetMapping("/viewfestival")
+    public ApiResponse<Map<String, Object>> viewfestival(@RequestBody FestivalViewRequest request) {
+        return festivalService.viewFestival(request);
     }
 
     @DeleteMapping("/deletefestival")
