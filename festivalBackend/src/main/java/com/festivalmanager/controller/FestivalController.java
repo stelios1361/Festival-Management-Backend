@@ -2,6 +2,7 @@ package com.festivalmanager.controller;
 
 import com.festivalmanager.dto.festival.*;
 import com.festivalmanager.dto.api.ApiResponse;
+import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.service.FestivalService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
