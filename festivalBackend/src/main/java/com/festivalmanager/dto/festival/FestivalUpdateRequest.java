@@ -26,36 +26,5 @@ public class FestivalUpdateRequest {
 
     private Set<String> organizers; // usernames
     private Set<String> staff;      // usernames
- 
-    
-    @Getter
-    @Setter
-    public static class VenueLayoutDTO {
 
-        private Set<String> stages;
-        private Set<String> vendorAreas;
-        private Set<String> facilities; // New field
-    }
-
-    @Getter
-    @Setter
-    public static class BudgetDTO {
-
-        private Double tracking;
-        private Double costs;
-        private Double logistics;
-        private Double expectedRevenue;
-    }
-
-    @Getter
-    @Setter
-    public static class VendorManagementDTO {
-
-        private Set<String> foodStalls;
-        private Set<String> merchandiseBooths;
-    }
 }
-
-
-
-

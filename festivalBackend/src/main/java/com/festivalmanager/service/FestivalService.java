@@ -4,19 +4,22 @@ import com.festivalmanager.model.VendorManagement;
 import com.festivalmanager.dto.api.ApiResponse;
 import com.festivalmanager.dto.festival.AddOrganizersRequest;
 import com.festivalmanager.dto.festival.AddStaffRequest;
+import com.festivalmanager.dto.festival.BudgetDTO;
 import com.festivalmanager.dto.festival.DecisionMakingRequest;
 import com.festivalmanager.dto.festival.FestivalAnnouncementRequest;
 import com.festivalmanager.dto.festival.FestivalCreateRequest;
 import com.festivalmanager.dto.festival.FestivalDeleteRequest;
+import com.festivalmanager.dto.festival.FestivalSearchRequest;
+import com.festivalmanager.dto.festival.FestivalSearchResponseDTO;
 import com.festivalmanager.dto.festival.FestivalUpdateRequest;
-import com.festivalmanager.dto.festival.FestivalUpdateRequest.BudgetDTO;
-import com.festivalmanager.dto.festival.FestivalUpdateRequest.VendorManagementDTO;
-import com.festivalmanager.dto.festival.FestivalUpdateRequest.VenueLayoutDTO;
+import com.festivalmanager.dto.festival.FestivalViewRequest;
 import com.festivalmanager.dto.festival.FinalSubmissionStartRequest;
 import com.festivalmanager.dto.festival.ReviewStartRequest;
 import com.festivalmanager.dto.festival.ScheduleMakingRequest;
 import com.festivalmanager.dto.festival.StageManagerAssignmentStartRequest;
 import com.festivalmanager.dto.festival.SubmissionStartRequest;
+import com.festivalmanager.dto.festival.VendorManagementDTO;
+import com.festivalmanager.dto.festival.VenueLayoutDTO;
 import com.festivalmanager.enums.FestivalRoleType;
 import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.Budget;
@@ -30,14 +33,17 @@ import com.festivalmanager.repository.FestivalUserRoleRepository;
 import com.festivalmanager.repository.UserRepository;
 import com.festivalmanager.security.UserSecurityService;
 import jakarta.transaction.Transactional;
+import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -87,6 +93,7 @@ public class FestivalService {
         // Check festival name uniqueness
         if (festivalRepository.existsByName(request.getName())) {
             throw new ApiException("Festival with this name already exists", HttpStatus.CONFLICT);
+
         }
 
         // Validate required fields
@@ -343,6 +350,118 @@ public class FestivalService {
                 LocalDateTime.now(),
                 HttpStatus.OK.value(),
                 "Staff members added successfully",
+                data
+        );
+    }
+
+    //-------------------- SEARCH FESTIVAL --------------------
+    /**
+     * Searches for festivals based on given criteria. If no criteria are
+     * provided, all festivals are returned. Results are sorted by the earliest
+     * date, then by name.
+     *
+     * @param request FestivalSearchRequest containing search criteria
+     * @return ApiResponse with a list of matching festivals
+     */
+    @Transactional
+    public ApiResponse<Map<String, Object>> searchFestivals(FestivalSearchRequest request) {
+
+        List<Festival> festivals = festivalRepository.findAll();
+        User requester = null;
+
+        if (request.getRequesterUsername() != null && !request.getRequesterUsername().isEmpty()) {
+            // Validate requester if username + token provided
+            requester = userSecurityService.validateRequester(
+                    request.getRequesterUsername(),
+                    request.getToken()
+            );
+        }
+
+        // Apply filters
+        if (request.getName() != null && !request.getName().isBlank()) {
+            String[] words = request.getName().trim().split("\\s+");
+            festivals = festivals.stream()
+                    .filter(f -> Arrays.stream(words)
+                    .allMatch(word -> f.getName().toLowerCase().contains(word.toLowerCase())))
+                    .toList();
+        }
+
+        if (request.getDescription() != null && !request.getDescription().isBlank()) {
+            String[] words = request.getDescription().trim().split("\\s+");
+            festivals = festivals.stream()
+                    .filter(f -> Arrays.stream(words)
+                    .allMatch(word -> f.getDescription().toLowerCase().contains(word.toLowerCase())))
+                    .toList();
+        }
+
+        if (request.getVenue() != null && !request.getVenue().isBlank()) {
+            String[] words = request.getVenue().trim().split("\\s+");
+            festivals = festivals.stream()
+                    .filter(f -> Arrays.stream(words)
+                    .allMatch(word -> f.getVenue().toLowerCase().contains(word.toLowerCase())))
+                    .toList();
+        }
+
+        if (request.getStartDate() != null || request.getEndDate() != null) {
+            festivals = festivals.stream()
+                    .filter(f -> f.getDates().stream().anyMatch(date
+                    -> (request.getStartDate() == null || !date.isBefore(request.getStartDate()))
+                    && (request.getEndDate() == null || !date.isAfter(request.getEndDate()))
+            ))
+                    .toList();
+        }
+
+        // Sort by earliest date then name
+        festivals = festivals.stream()
+                .sorted(Comparator
+                        .comparing((Festival f) -> f.getDates().stream().min(LocalDate::compareTo).orElse(LocalDate.MAX))
+                        .thenComparing(Festival::getName))
+                .toList();
+
+        User finalRequester = requester;
+
+        List<FestivalSearchResponseDTO> results = festivals.stream()
+                .map(f -> mapFestival(f, finalRequester))
+                .toList();
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("festivals", results);
+
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "Festivals retrieved successfully",
+                data
+        );
+    }
+
+    @Transactional
+    public ApiResponse<Map<String, Object>> viewFestival(FestivalViewRequest request) {
+
+        // Find festival
+        Festival festival = festivalRepository.findById(request.getFestivalId())
+                .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
+
+        User requester = null;
+
+        if (request.getRequesterUsername() != null && !request.getRequesterUsername().isEmpty()) {
+            // Validate requester if username + token provided
+            requester = userSecurityService.validateRequester(
+                    request.getRequesterUsername(),
+                    request.getToken()
+            );
+        }
+
+        // Map to view based on role
+        FestivalSearchResponseDTO dto = mapFestival(festival, requester);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("festival", dto);
+
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "Festival retrieved successfully",
                 data
         );
     }
@@ -746,13 +865,6 @@ public class FestivalService {
         );
     }
 
-    
-    
-    
-    
-    
-    
-    
     // -------------------- HELPERS --------------------
     private void updateVenueLayout(Festival festival, VenueLayoutDTO dto) {
         if (dto == null) {
@@ -894,42 +1006,58 @@ public class FestivalService {
         return true;
     }
 
-    private Map<String, Object> mapFestivalToView(Festival festival, User requester, String role) {
-        Map<String, Object> view = new HashMap<>();
-        view.put("id", festival.getId());
-        view.put("name", festival.getName());
-        view.put("dates", festival.getDates());
-        view.put("venue", festival.getVenue());
-        view.put("state", festival.getState().name());
+    private FestivalSearchResponseDTO mapFestival(Festival festival, User requester) {
+        FestivalSearchResponseDTO dto = new FestivalSearchResponseDTO();
+        dto.setId(festival.getId());
+        dto.setName(festival.getName());
+        dto.setDescription(festival.getDescription());
+        dto.setVenue(festival.getVenue());
+        dto.setDates(festival.getDates());
 
-        switch (role) {
-            case "VISITOR":
-                view.put("description", null);
-                view.put("organizers", null);
-                break;
+        boolean isOrganizer = requester != null && festival.getUserRoles().stream()
+                .anyMatch(r -> r.getUser().equals(requester) && r.getRole() == FestivalRoleType.ORGANIZER);
 
-            case "ORGANIZER":
-                view.put("description", festival.getDescription());
-                view.put("organizers", festival.getUserRoles().stream()
-                        .filter(r -> r.getRole() == FestivalRoleType.ORGANIZER)
-                        .map(r -> r.getUser().getUsername())
-                        .toList());
-                // Add any other nested details if needed (budget, venue layout, vendor management)
-                view.put("budget", festival.getBudget());
-                view.put("venueLayout", festival.getVenueLayout());
-                view.put("vendorManagement", festival.getVendorManagement());
-                break;
+        if (isOrganizer) {
+            dto.setOrganizers(festival.getUserRoles().stream()
+                    .filter(r -> r.getRole() == FestivalRoleType.ORGANIZER)
+                    .map(r -> r.getUser().getUsername())
+                    .toList());
 
-            default:
-                view.put("description", festival.getDescription());
-                view.put("organizers", festival.getUserRoles().stream()
-                        .filter(r -> r.getRole() == FestivalRoleType.ORGANIZER)
-                        .map(r -> r.getUser().getUsername())
-                        .toList());
-                break;
+            dto.setStaff(festival.getUserRoles().stream()
+                    .filter(r -> r.getRole() == FestivalRoleType.STAFF)
+                    .map(r -> r.getUser().getUsername())
+                    .toList());
+
+            // Nested entities
+            VenueLayout layout = festival.getVenueLayout();
+            if (layout != null) {
+                VenueLayoutDTO layoutDTO = new VenueLayoutDTO();
+                layoutDTO.setStages(layout.getStages());
+                layoutDTO.setVendorAreas(layout.getVendorAreas());
+                layoutDTO.setFacilities(layout.getFacilities());
+                dto.setVenueLayout(layoutDTO);
+            }
+
+            Budget budget = festival.getBudget();
+            if (budget != null) {
+                BudgetDTO budgetDTO = new BudgetDTO();
+                budgetDTO.setTracking(budget.getTracking());
+                budgetDTO.setCosts(budget.getCosts());
+                budgetDTO.setLogistics(budget.getLogistics());
+                budgetDTO.setExpectedRevenue(budget.getExpectedRevenue());
+                dto.setBudget(budgetDTO);
+            }
+
+            VendorManagement vm = festival.getVendorManagement();
+            if (vm != null) {
+                VendorManagementDTO vmDTO = new VendorManagementDTO();
+                vmDTO.setFoodStalls(vm.getFoodStalls());
+                vmDTO.setMerchandiseBooths(vm.getMerchandiseBooths());
+                dto.setVendorManagement(vmDTO);
+            }
         }
 
-        return view;
+        return dto;
     }
 
 }

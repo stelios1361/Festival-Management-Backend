@@ -29,21 +29,4 @@ public class GlobalExceptionHandler {
         );
         return new ResponseEntity<>(response, ex.getStatus());
     }
-
-    /**
-     * Handles unexpected RuntimeExceptions.
-     *
-     * @param ex the RuntimeException thrown
-     * @return a ResponseEntity containing the ApiResponse
-     */
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
-        ApiResponse<Void> response = new ApiResponse<>(
-                LocalDateTime.now(),
-                500,
-                ex.getMessage(),
-                null
-        );
-        return ResponseEntity.internalServerError().body(response);
-    }
 }
