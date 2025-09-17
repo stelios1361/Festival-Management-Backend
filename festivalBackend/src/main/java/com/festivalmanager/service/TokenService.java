@@ -1,19 +1,21 @@
 package com.festivalmanager.service;
 
-import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.enums.PermanentRoleType;
+import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.Token;
 import com.festivalmanager.model.User;
 import com.festivalmanager.repository.TokenRepository;
 import com.festivalmanager.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-import java.util.List;
+
 
 /**
  * Service for managing authentication tokens. Handles token generation,
@@ -86,6 +88,7 @@ public class TokenService {
      * @throws ApiException if token is invalid, expired, inactive, or belongs
      * to another user
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = ApiException.class)
     public boolean validateToken(String value, User requestingUser) {
         Token token = tokenRepository.findByValue(value)
                 .orElseThrow(() -> new ApiException("Invalid token", HttpStatus.UNAUTHORIZED));

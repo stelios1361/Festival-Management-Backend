@@ -84,8 +84,8 @@ public class UserController {
     }
 
     /**
-     * Deletes a user account. Can be executed only by an
-     * admin.
+     * Deletes a user account. Can be executed  by an
+     * admin or a user for himself.
      *
      * @param request delete user request containing target username 
      * and requester info
