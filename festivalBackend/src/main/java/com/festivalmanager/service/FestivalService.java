@@ -2,50 +2,19 @@ package com.festivalmanager.service;
 
 import com.festivalmanager.model.VendorManagement;
 import com.festivalmanager.dto.api.ApiResponse;
-import com.festivalmanager.dto.festival.AddOrganizersRequest;
-import com.festivalmanager.dto.festival.AddStaffRequest;
-import com.festivalmanager.dto.festival.BudgetDTO;
-import com.festivalmanager.dto.festival.DecisionMakingRequest;
-import com.festivalmanager.dto.festival.FestivalAnnouncementRequest;
-import com.festivalmanager.dto.festival.FestivalCreateRequest;
-import com.festivalmanager.dto.festival.FestivalDeleteRequest;
-import com.festivalmanager.dto.festival.FestivalSearchRequest;
-import com.festivalmanager.dto.festival.FestivalSearchResponseDTO;
-import com.festivalmanager.dto.festival.FestivalUpdateRequest;
-import com.festivalmanager.dto.festival.FestivalViewRequest;
-import com.festivalmanager.dto.festival.FinalSubmissionStartRequest;
-import com.festivalmanager.dto.festival.ReviewStartRequest;
-import com.festivalmanager.dto.festival.ScheduleMakingRequest;
-import com.festivalmanager.dto.festival.StageManagerAssignmentStartRequest;
-import com.festivalmanager.dto.festival.SubmissionStartRequest;
-import com.festivalmanager.dto.festival.VendorManagementDTO;
-import com.festivalmanager.dto.festival.VenueLayoutDTO;
+import com.festivalmanager.dto.festival.*;
 import com.festivalmanager.enums.FestivalRoleType;
 import com.festivalmanager.exception.ApiException;
-import com.festivalmanager.model.Budget;
-import com.festivalmanager.model.Festival;
-import com.festivalmanager.model.FestivalUserRole;
-import com.festivalmanager.model.Performance;
-import com.festivalmanager.model.User;
-import com.festivalmanager.model.VenueLayout;
-import com.festivalmanager.repository.FestivalRepository;
-import com.festivalmanager.repository.FestivalUserRoleRepository;
-import com.festivalmanager.repository.UserRepository;
+import com.festivalmanager.model.*;
+import com.festivalmanager.repository.*;
 import com.festivalmanager.security.UserSecurityService;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -434,7 +403,16 @@ public class FestivalService {
                 data
         );
     }
-
+    
+    //-------------------- VIEW FESTIVAL --------------------
+    /**
+     * Searches for festival based on given festival id.
+     * Results are sorted by the earliest
+     * date, then by name.
+     *
+     * @param request FestivalViewRequest 
+     * @return ApiResponse with the matching festival
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> viewFestival(FestivalViewRequest request) {
 
