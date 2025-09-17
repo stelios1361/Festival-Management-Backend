@@ -1,45 +1,34 @@
 package com.festivalmanager.service;
 
 import com.festivalmanager.dto.api.ApiResponse;
-import com.festivalmanager.dto.festival.FestivalSearchResponseDTO;
-import com.festivalmanager.dto.performance.BandMemberAddRequest;
-import com.festivalmanager.dto.performance.MerchandiseItemDTO;
-import com.festivalmanager.dto.performance.PerformanceAcceptanceRequest;
-import com.festivalmanager.dto.performance.PerformanceApprovalRequest;
-import com.festivalmanager.dto.performance.PerformanceAssignStaffRequest;
-import com.festivalmanager.dto.performance.PerformanceCreateRequest;
-import com.festivalmanager.dto.performance.PerformanceFinalSubmissionRequest;
-import com.festivalmanager.dto.performance.PerformanceRejectionRequest;
-import com.festivalmanager.dto.performance.PerformanceReviewRequest;
-import com.festivalmanager.dto.performance.PerformanceSearchResponseDTO;
-import com.festivalmanager.dto.performance.PerformanceSubmitRequest;
-import com.festivalmanager.dto.performance.PerformanceUpdateRequest;
-import com.festivalmanager.dto.performance.PerformanceViewRequest;
-import com.festivalmanager.dto.performance.PerformanceWithdrawRequest;
-import com.festivalmanager.dto.performance.TechnicalRequirementDTO;
+import com.festivalmanager.dto.performance.*;
 import com.festivalmanager.enums.FestivalRoleType;
 import com.festivalmanager.exception.ApiException;
-import com.festivalmanager.model.Festival;
-import com.festivalmanager.model.FestivalUserRole;
-import com.festivalmanager.model.MerchandiseItem;
-import com.festivalmanager.model.Performance;
-import com.festivalmanager.model.TechnicalRequirementFile;
-import com.festivalmanager.model.User;
-import com.festivalmanager.repository.FestivalRepository;
-import com.festivalmanager.repository.FestivalUserRoleRepository;
-import com.festivalmanager.repository.PerformanceRepository;
-import com.festivalmanager.repository.UserRepository;
+import com.festivalmanager.model.*;
+import com.festivalmanager.repository.*;
 import com.festivalmanager.security.UserSecurityService;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service class for managing festival performances.
+ * <p>
+ * Provides methods for creating, updating, submitting, withdrawing, assigning
+ * staff, reviewing, approving, rejecting, final submitting, accepting, viewing,
+ * and searching performances.
+ * <p>
+ * Handles role-based access control: - ARTIST: Can create, update, submit,
+ * withdraw, finalize performances. - STAFF: Can review assigned performances. -
+ * ORGANIZER: Can assign staff, approve/reject, accept performances.
+ * <p>
+ * All methods return an ApiResponse containing status, message, and relevant
+ * data.
+ */
 @Service
 public class PerformanceService {
 
@@ -58,6 +47,16 @@ public class PerformanceService {
     @Autowired
     private UserSecurityService userSecurityService;
 
+    /**
+     * Creates a new performance for a given festival.
+     *
+     * @param request PerformanceCreateRequest containing performance details
+     * and band members
+     * @return ApiResponse with performance ID, identifier, name, state, and
+     * main artist
+     * @throws ApiException if validation fails or festival/performance already
+     * exists
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> createPerformance(PerformanceCreateRequest request) {
         // Validate requester 
@@ -184,6 +183,14 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Updates an existing performance. Only the ARTIST of the performance can
+     * update.
+     *
+     * @param request PerformanceUpdateRequest containing updated fields
+     * @return ApiResponse with updated performance details
+     * @throws ApiException if requester is not an artist or validation fails
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> updatePerformance(PerformanceUpdateRequest request) {
         // Validate requester 
@@ -311,6 +318,15 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Adds a new band member to an existing performance. Only the ARTIST of the
+     * performance can add members.
+     *
+     * @param request BandMemberAddRequest containing the performance ID and new
+     * member username
+     * @return ApiResponse confirming addition of the band member
+     * @throws ApiException if requester is not artist or user not found
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> addBandMember(BandMemberAddRequest request) {
         // Validate requester 
@@ -362,6 +378,15 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Submits a performance for festival consideration. Only ARTIST can submit,
+     * and festival must be in SUBMISSION state.
+     *
+     * @param request PerformanceSubmitRequest containing performance ID
+     * @return ApiResponse with submitted performance details
+     * @throws ApiException if performance incomplete or festival not accepting
+     * submissions
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> submitPerformance(PerformanceSubmitRequest request) {
         // Validate requester 
@@ -418,6 +443,15 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Withdraws a performance before submission. Only ARTIST can withdraw and
+     * performance must be in CREATED state.
+     *
+     * @param request PerformanceWithdrawRequest containing performance ID
+     * @return ApiResponse confirming withdrawal
+     * @throws ApiException if performance already submitted or requester not
+     * artist
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> withdrawPerformance(PerformanceWithdrawRequest request) {
         // Validate requester 
@@ -458,6 +492,16 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Assigns a STAFF member to a performance. Only an ORGANIZER of the
+     * festival can assign staff.
+     *
+     * @param request PerformanceAssignStaffRequest containing staff ID and
+     * performance ID
+     * @return ApiResponse confirming assigned staff
+     * @throws ApiException if requester not organizer or festival not in
+     * ASSIGNMENT state
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> assignStaffToPerformance(PerformanceAssignStaffRequest request) {
         // Validate requester 
@@ -518,6 +562,15 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Reviews a performance. Only the assigned STAFF can review, and festival
+     * must be in REVIEW state.
+     *
+     * @param request PerformanceReviewRequest containing score and comments
+     * @return ApiResponse with review details
+     * @throws ApiException if requester not assigned staff or invalid
+     * score/comments
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> reviewPerformance(PerformanceReviewRequest request) {
         // Validate requester 
@@ -570,6 +623,14 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Approves a performance. Only an ORGANIZER of the festival can approve,
+     * and festival must be in SCHEDULING state.
+     *
+     * @param request PerformanceApprovalRequest containing performance ID
+     * @return ApiResponse confirming approval
+     * @throws ApiException if requester not organizer or invalid festival state
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> approvePerformance(PerformanceApprovalRequest request) {
         // Validate requester 
@@ -612,6 +673,15 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Rejects a performance manually. Only an ORGANIZER of the festival can
+     * reject, and festival must be in SCHEDULING or DECISION state.
+     *
+     * @param request PerformanceRejectionRequest containing rejection reason
+     * @return ApiResponse confirming rejection
+     * @throws ApiException if requester not organizer, invalid state, or reason
+     * missing
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> rejectPerformanceManually(PerformanceRejectionRequest request) {
         // Validate requester 
@@ -662,6 +732,15 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Submits final performance details (setlist, rehearsal, and performance
+     * slots). Only ARTIST can submit final, and festival must be in
+     * FINAL_SUBMISSION state.
+     *
+     * @param request PerformanceFinalSubmissionRequest containing final details
+     * @return ApiResponse confirming final submission
+     * @throws ApiException if requester not artist or mandatory fields missing
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> submitFinalPerformance(PerformanceFinalSubmissionRequest request) {
         // Validate requester 
@@ -722,8 +801,17 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Accepts a performance after DECISION stage. Only ORGANIZER can accept,
+     * and festival must be in DECISION state.
+     *
+     * @param request PerformanceAcceptanceRequest containing performance ID
+     * @return ApiResponse confirming acceptance
+     * @throws ApiException if requester not organizer or festival not in
+     * DECISION
+     */
     @Transactional
-    public ApiResponse<Map<String, Object>> accpetPerformance(PerformanceAcceptanceRequest request) {
+    public ApiResponse<Map<String, Object>> acceptPerformance(PerformanceAcceptanceRequest request) {
         // Validate requester 
         User requester = userSecurityService.validateRequester(
                 request.getRequesterUsername(),
@@ -765,11 +853,20 @@ public class PerformanceService {
         );
     }
 
+    /**
+     * Retrieves performance details. Details vary depending on the role of the
+     * requester (creator, band member, staff, organizer, visitor).
+     *
+     * @param request PerformanceViewRequest containing performance ID and
+     * optional requester info
+     * @return ApiResponse with performance details
+     * @throws ApiException if performance not found or invalid requester
+     */
     @Transactional
     public ApiResponse<Map<String, Object>> viewPerformance(PerformanceViewRequest request) {
 
         //Find performance
-        Performance performance = performanceRepository.findById(request.getPerformancelId())
+        Performance performance = performanceRepository.findById(request.getPerformanceId())
                 .orElseThrow(() -> new ApiException("Performance not found", HttpStatus.NOT_FOUND));
 
         User requester = null;
@@ -796,39 +893,139 @@ public class PerformanceService {
         );
     }
 
+    //-------------------- SEARCH PERFORMANCE --------------------
+    /**
+     * Searches for performances based on name, artists, and genre. If no
+     * criteria are provided, all performances are returned. Results are sorted
+     * by genre, then by name.
+     *
+     * @param request PerformanceSearchRequest containing search criteria
+     * @return ApiResponse with a list of matching performances
+     */
+    @Transactional
+    public ApiResponse<Map<String, Object>> searchPerformances(PerformanceSearchRequest request) {
+
+        List<Performance> performances = performanceRepository.findAll();
+        User requester = null;
+
+        if (request.getRequesterUsername() != null && !request.getRequesterUsername().isEmpty()) {
+            // Validate requester if username provided
+            requester = userSecurityService.validateRequester(
+                    request.getRequesterUsername(),
+                    request.getToken()
+            );
+        }
+
+        // --- FILTER BY NAME ---
+        if (request.getName() != null && !request.getName().isBlank()) {
+            String[] words = request.getName().trim().split("\\s+");
+            performances = performances.stream()
+                    .filter(p -> Arrays.stream(words)
+                    .allMatch(word -> p.getName().toLowerCase().contains(word.toLowerCase())))
+                    .toList();
+        }
+
+        // --- FILTER BY GENRE ---
+        if (request.getGenre() != null && !request.getGenre().isBlank()) {
+            String[] words = request.getGenre().trim().split("\\s+");
+            performances = performances.stream()
+                    .filter(p -> Arrays.stream(words)
+                    .allMatch(word -> p.getGenre().toLowerCase().contains(word.toLowerCase())))
+                    .toList();
+        }
+
+        // --- FILTER BY ARTIST (creator or band members) ---
+        if (request.getArtist() != null && !request.getArtist().isBlank()) {
+            String[] words = request.getArtist().trim().split("\\s+");
+            performances = performances.stream()
+                    .filter(p -> {
+                        String creatorName = p.getCreator().getUsername().toLowerCase();
+                        Set<String> bandUsernames = p.getBandMembers().stream()
+                                .map(u -> u.getUsername().toLowerCase())
+                                .collect(Collectors.toSet());
+
+                        // All words must match either in creator or in at least one band member
+                        return Arrays.stream(words).allMatch(word
+                                -> creatorName.contains(word.toLowerCase())
+                                || bandUsernames.stream().anyMatch(b -> b.contains(word.toLowerCase()))
+                        );
+                    })
+                    .toList();
+        }
+
+        // --- ROLE FILTERING ---
+        if (requester == null) {
+            // Visitors can only see scheduled performances
+            performances = performances.stream()
+                    .filter(p -> p.getState() == Performance.PerformanceState.SCHEDULED)
+                    .toList();
+        }
+
+        // --- SORTING (genre → name) ---
+        performances = performances.stream()
+                .sorted(Comparator
+                        .comparing(Performance::getGenre, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(Performance::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        User finalRequester = requester;
+
+        List<PerformanceSearchResponseDTO> results = performances.stream()
+                .map(p -> mapPerformance(p, finalRequester)) // applies role-based detail logic
+                .toList();
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("performances", results);
+
+        return new ApiResponse<>(
+                LocalDateTime.now(),
+                HttpStatus.OK.value(),
+                "Performances retrieved successfully",
+                data
+        );
+    }
+
     private PerformanceSearchResponseDTO mapPerformance(Performance performance, User requester) {
         PerformanceSearchResponseDTO dto = new PerformanceSearchResponseDTO();
 
-        // Always available
+        // --- BASIC FIELDS (always visible to VISITOR and above if performance is SCHEDULED) ---
         dto.setId(performance.getId());
-        dto.setIdentifier(performance.getIdentifier());
         dto.setName(performance.getName());
-        dto.setDescription(performance.getDescription());
         dto.setGenre(performance.getGenre());
         dto.setDuration(performance.getDuration());
         dto.setState(performance.getState().name());
-        dto.setCreator(performance.getCreator().getUsername());
         dto.setFestivalId(performance.getFestival().getId());
 
-        // Check permissions: creator OR staff OR organizer
-        boolean isPrivileged = requester != null && (performance.getCreator().equals(requester)
-                || (performance.getStageManager() != null && performance.getStageManager().equals(requester))
-                || performance.getFestival().getUserRoles().stream()
-                        .anyMatch(r -> r.getUser().equals(requester)
-                        && (r.getRole() == FestivalRoleType.ORGANIZER || r.getRole() == FestivalRoleType.STAFF)));
+        // Visitors can only see scheduled performances
+        if (requester == null && performance.getState() != Performance.PerformanceState.SCHEDULED) {
+            return dto; // only basic info returned
+        }
 
-        if (isPrivileged) {
+        // --- ROLE-BASED ACCESS CONTROL ---
+        boolean isCreator = requester != null && performance.getCreator().equals(requester);
+        boolean isBandMember = requester != null && performance.getBandMembers().contains(requester);
+        boolean isStageManager = requester != null && performance.getStageManager() != null
+                && performance.getStageManager().equals(requester);
+        boolean isOrganizer = requester != null && performance.getFestival().getUserRoles().stream()
+                .anyMatch(r -> r.getUser().equals(requester) && r.getRole() == FestivalRoleType.ORGANIZER);
+
+        boolean canViewFullDetails = isCreator || isBandMember || isStageManager || isOrganizer;
+
+        if (canViewFullDetails) {
+            dto.setIdentifier(performance.getIdentifier());
+            dto.setDescription(performance.getDescription());
+            dto.setCreator(performance.getCreator().getUsername());
+
             // Band members
             dto.setBandMembers(performance.getBandMembers().stream()
                     .map(User::getUsername)
                     .toList());
 
-            // Technical requirement
+            // Tech requirements
             if (performance.getTechnicalRequirement() != null) {
                 TechnicalRequirementDTO trDTO = new TechnicalRequirementDTO();
                 trDTO.setFileName(performance.getTechnicalRequirement().getFilePath());
                 dto.setTechnicalRequirement(trDTO);
-
             }
 
             // Setlist
@@ -846,7 +1043,7 @@ public class PerformanceService {
                     })
                     .toList());
 
-            // Preferred times
+            // Times
             dto.setPreferredRehearsalTimes(performance.getPreferredRehearsalTimes());
             dto.setPreferredPerformanceSlots(performance.getPreferredPerformanceSlots());
 
@@ -855,7 +1052,7 @@ public class PerformanceService {
                 dto.setStageManager(performance.getStageManager().getUsername());
             }
 
-            // Reviewer fields
+            // Reviewer details
             dto.setReviewerComments(performance.getReviewerComments());
             dto.setScore(performance.getScore());
         }

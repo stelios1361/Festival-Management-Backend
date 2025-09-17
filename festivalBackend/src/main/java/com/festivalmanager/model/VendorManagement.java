@@ -15,27 +15,49 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 
-    @Getter
-    @Setter
-    @Entity
-    @Table(name = "festival_vendor_managements")
-    public  class VendorManagement {
+/**
+ * Entity representing the vendor management details of a festival.
+ * <p>
+ * Contains information about food stalls and merchandise booths
+ * available at the festival venue. Each festival has at most one
+ * {@code VendorManagement} entity.
+ * </p>
+ */
+@Getter
+@Setter
+@Entity
+@Table(name = "festival_vendor_managements")
+public class VendorManagement {
 
-        @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY)
-        private Long id;
+    /**
+     * Unique identifier for the vendor management entity.
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-        @OneToOne
-        @JoinColumn(name = "festival_id", nullable = false)
-        private Festival festival;
+    /**
+     * The festival this vendor management configuration belongs to.
+     */
+    @OneToOne
+    @JoinColumn(name = "festival_id", nullable = false)
+    private Festival festival;
 
-        @ElementCollection
-        @CollectionTable(name = "vendor_food_stalls", joinColumns = @JoinColumn(name = "vendor_management_id"))
-        @Column(name = "food_stall")
-        private Set<String> foodStalls = new HashSet<>();
+    /**
+     * The set of food stalls available at the festival venue.
+     * Example: "Burger Tent", "Pizza Stand", "Vegan Corner".
+     */
+    @ElementCollection
+    @CollectionTable(name = "vendor_food_stalls", joinColumns = @JoinColumn(name = "vendor_management_id"))
+    @Column(name = "food_stall")
+    private Set<String> foodStalls = new HashSet<>();
 
-        @ElementCollection
-        @CollectionTable(name = "vendor_merch_booths", joinColumns = @JoinColumn(name = "vendor_management_id"))
-        @Column(name = "merch_booth")
-        private Set<String> merchandiseBooths = new HashSet<>();
-    }
+    /**
+     * The set of merchandise booths available at the festival venue.
+     * Example: "Band Merch Booth", "Festival Souvenirs".
+     */
+    @ElementCollection
+    @CollectionTable(name = "vendor_merch_booths", joinColumns = @JoinColumn(name = "vendor_management_id"))
+    @Column(name = "merch_booth")
+    private Set<String> merchandiseBooths = new HashSet<>();
+}

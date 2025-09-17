@@ -5,6 +5,13 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Entity representing the role of a user within a specific festival.
+ * <p>
+ * Each user can have a specific role in a festival, such as ARTIST, ORGANIZER,
+ * or STAFF. The combination of festival, user, and role must be unique.
+ * </p>
+ */
 @Getter
 @Setter
 @Entity
@@ -16,24 +23,23 @@ import lombok.Setter;
 )
 public class FestivalUserRole {
 
+    /** Unique identifier of this user-role mapping. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Festival */
+    /** The festival to which this role applies. */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "festival_id", nullable = false)
     private Festival festival;
 
-    
-    /** User */
+    /** The user assigned this role within the festival. */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    /** Role for this user in this festival */
+    /** Role of the user in this festival (e.g., ARTIST, ORGANIZER, STAFF). */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private FestivalRoleType role;
-
 }

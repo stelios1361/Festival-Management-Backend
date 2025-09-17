@@ -91,7 +91,7 @@ public class UserController {
      * and requester info
      * @return ApiResponse with operation status
      */
-    @PostMapping("/deleteuser")
+    @PostMapping("/delete")
     public ApiResponse<Map<String, Object>> deleteUser(@RequestBody DeleteUserRequest request) {
         return userService.deleteUser(request);
     }

@@ -346,6 +346,16 @@ public class FestivalService {
             );
         }
 
+        // Filter announced festivals for visitors
+        boolean isVisitor = requester == null; // no user = visitor
+
+        if (isVisitor) {
+            festivals = festivals.stream()
+                    .filter(f -> !f.getDates().isEmpty()
+                    && f.getDates().stream().anyMatch(date -> !date.isBefore(LocalDate.now())))
+                    .toList();
+        }
+
         // Apply filters
         if (request.getName() != null && !request.getName().isBlank()) {
             String[] words = request.getName().trim().split("\\s+");
@@ -403,14 +413,13 @@ public class FestivalService {
                 data
         );
     }
-    
+
     //-------------------- VIEW FESTIVAL --------------------
     /**
-     * Searches for festival based on given festival id.
-     * Results are sorted by the earliest
-     * date, then by name.
+     * Searches for festival based on given festival id. Results are sorted by
+     * the earliest date, then by name.
      *
-     * @param request FestivalViewRequest 
+     * @param request FestivalViewRequest
      * @return ApiResponse with the matching festival
      */
     @Transactional
