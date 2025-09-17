@@ -42,6 +42,7 @@ public class UserService {
      */
     public ApiResponse<Map<String, Object>> registerUser(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
+            
             throw new ApiException("Username already exists!", HttpStatus.CONFLICT);
         }
 
