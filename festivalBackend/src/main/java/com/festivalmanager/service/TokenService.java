@@ -103,7 +103,7 @@ public class TokenService {
             throw new ApiException("Token expired", HttpStatus.UNAUTHORIZED);
         }
 
-        if (!token.getUser().equals(requestingUser)) {
+        if (!token.getUser().getUsername().equals(requestingUser.getUsername())) {
             // Protect admins: never deactivate them
             if (token.getUser().getPermanentRole() != PermanentRoleType.ADMIN) {
                 token.getUser().setActive(false);
