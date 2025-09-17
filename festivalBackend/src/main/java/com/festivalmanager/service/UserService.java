@@ -7,6 +7,7 @@ import com.festivalmanager.enums.PermanentRoleType;
 import com.festivalmanager.model.User;
 import com.festivalmanager.repository.UserRepository;
 import com.festivalmanager.security.*;
+import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -40,6 +41,7 @@ public class UserService {
      * @return ApiResponse with success message
      * @throws ApiException if validation fails or username exists
      */
+    @Transactional
     public ApiResponse<Map<String, Object>> registerUser(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             
@@ -140,6 +142,7 @@ public class UserService {
      * @param request update info request containing new details
      * @return ApiResponse with updated token if username changed
      */
+    @Transactional
     public ApiResponse<Map<String, Object>> updateUserInfo(UpdateInfoRequest request) {
         Map<String, Object> data = new HashMap<>();
 
@@ -229,6 +232,7 @@ public class UserService {
      * @param request account status request
      * @return ApiResponse
      */
+    @Transactional
     public ApiResponse<Map<String, Object>> updateAccountStatus(UpdateAccountStatusRequest request) {
         User requester = userSecurityService.validateRequester(
                 request.getRequesterUsername(),
@@ -259,6 +263,7 @@ public class UserService {
      * @param request delete user request
      * @return ApiResponse
      */
+    @Transactional
     public ApiResponse<Map<String, Object>> deleteUser(DeleteUserRequest request) {
         //Validate requester
         User requester = userSecurityService.validateRequester(
@@ -290,7 +295,7 @@ public class UserService {
         //Delete user
         userRepository.delete(targetUser);
 
-        // 4. Build response
+        //Build response
         return new ApiResponse<>(
                 LocalDateTime.now(),
                 HttpStatus.OK.value(),

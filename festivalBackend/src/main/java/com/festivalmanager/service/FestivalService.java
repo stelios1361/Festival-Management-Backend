@@ -773,6 +773,7 @@ public class FestivalService {
         festival.getPerformances().forEach(performance -> {
             if (performance.getState() != Performance.PerformanceState.SUBMITTED) {
                 performance.setState(Performance.PerformanceState.REJECTED);
+                performance.setReviewerComments("AUTOMATICALY REJECTED - NOT SUBMITTED");
             }
         });
 
