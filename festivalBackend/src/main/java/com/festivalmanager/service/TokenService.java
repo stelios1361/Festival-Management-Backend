@@ -25,9 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class TokenService {
 
     @Autowired
-    private TokenRepository tokenRepository;
+    public TokenRepository tokenRepository;
     @Autowired
-    private UserRepository userRepository;
+    public UserRepository userRepository;
 
     // -------------------- TOKEN GENERATION --------------------
     /**
