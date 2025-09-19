@@ -100,6 +100,7 @@ public class PerformanceService {
         performance.setGenre(request.getGenre());
         performance.setDuration(request.getDuration());
         performance.setFestival(festival);
+        performance.setCreator(requester);
 
         //Map optional fields 
         if (request.getTechnicalRequirements() != null) {
