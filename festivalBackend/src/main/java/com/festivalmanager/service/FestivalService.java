@@ -6,6 +6,7 @@ import com.festivalmanager.dto.festival.*;
 import com.festivalmanager.enums.FestivalRoleType;
 import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.*;
+import com.festivalmanager.model.Festival.FestivalState;
 import com.festivalmanager.repository.*;
 import com.festivalmanager.security.UserSecurityService;
 import jakarta.transaction.Transactional;
@@ -59,18 +60,26 @@ public class FestivalService {
                 request.getToken()
         );
 
-        // Check festival name uniqueness
-        if (festivalRepository.existsByName(request.getName())) {
-            throw new ApiException("Festival with this name already exists", HttpStatus.CONFLICT);
-
+        // Validate required fields
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new ApiException("Name must be provided", HttpStatus.BAD_REQUEST);
         }
 
-        // Validate required fields
+        if (request.getDescription() == null || request.getDescription().isBlank()) {
+            throw new ApiException("Description must be provided", HttpStatus.BAD_REQUEST);
+        }
+
         if (request.getDates() == null || request.getDates().isEmpty()) {
             throw new ApiException("At least one date must be provided", HttpStatus.BAD_REQUEST);
         }
         if (request.getVenue() == null || request.getVenue().isBlank()) {
             throw new ApiException("Venue must be provided", HttpStatus.BAD_REQUEST);
+        }
+
+        // Check festival name uniqueness
+        if (festivalRepository.existsByName(request.getName())) {
+            throw new ApiException("Festival with this name already exists", HttpStatus.CONFLICT);
+
         }
 
         // Create new festival
@@ -130,10 +139,13 @@ public class FestivalService {
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
+        // Prevent updates if festival is already announced
+        if (checkIfFestivalAnnounced(festival)) {
+            throw new ApiException("Cannot update festival: it has already been announced", HttpStatus.FORBIDDEN);
+        }
+
         // Check requester is an organizer for the festival
         isOrganizerForFestival(requester, festival);
-
-        boolean isAnnounced = festival.getState() == Festival.FestivalState.ANNOUNCED;
 
         // Update basic info
         if (request.getName() != null && !request.getName().isBlank()) {
@@ -149,16 +161,15 @@ public class FestivalService {
             festival.setDates(new HashSet<>(request.getDates()));
         }
 
-        // Update nested objects only if festival not ANNOUNCED
-        if (!isAnnounced) {
-            updateVenueLayout(festival, request.getVenueLayout());
-            updateBudget(festival, request.getBudget());
-            updateVendorManagement(festival, request.getVendorManagement());
-        }
+        // Update nested objects
+        updateVenueLayout(festival, request.getVenueLayout());
+        updateBudget(festival, request.getBudget());
+        updateVendorManagement(festival, request.getVendorManagement());
 
         // Update organizers and staff
         updateFestivalRoles(festival, request.getOrganizers(), request.getStaff());
 
+        // Save updated festival
         Festival updatedFestival = festivalRepository.save(festival);
 
         // Build response
@@ -208,6 +219,11 @@ public class FestivalService {
         // Find festival
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
+
+        // Prevent updates if festival is already announced
+        if (checkIfFestivalAnnounced(festival)) {
+            throw new ApiException("Cannot update festival: it has already been announced", HttpStatus.FORBIDDEN);
+        }
 
         // Check requester is an organizer for the festival
         isOrganizerForFestival(requester, festival);
@@ -280,6 +296,11 @@ public class FestivalService {
         Festival festival = festivalRepository.findById(request.getFestivalId())
                 .orElseThrow(() -> new ApiException("Festival not found", HttpStatus.NOT_FOUND));
 
+        // Prevent updates if festival is already announced
+        if (checkIfFestivalAnnounced(festival)) {
+            throw new ApiException("Cannot update festival: it has already been announced", HttpStatus.FORBIDDEN);
+        }
+
         // Check requester is an organizer
         isOrganizerForFestival(requester, festival);
 
@@ -350,10 +371,7 @@ public class FestivalService {
         boolean isVisitor = requester == null; // no user = visitor
 
         if (isVisitor) {
-            festivals = festivals.stream()
-                    .filter(f -> !f.getDates().isEmpty()
-                    && f.getDates().stream().anyMatch(date -> !date.isBefore(LocalDate.now())))
-                    .toList();
+            festivals = festivalRepository.findAllByState(FestivalState.ANNOUNCED);
         }
 
         // Apply filters
@@ -832,10 +850,13 @@ public class FestivalService {
             throw new ApiException("Festival is not in DECISION state", HttpStatus.FORBIDDEN);
         }
 
-        //Check requester is an organizer
+        // Check requester is an organizer
         isOrganizerForFestival(requester, festival);
 
-        //Update festival state to ANNOUNCED
+        // Validate that all required festival information is present
+        validateFestivalCompleteness(festival);
+
+        // Update festival state to ANNOUNCED
         festival.setState(Festival.FestivalState.ANNOUNCED);
         festivalRepository.save(festival);
 
@@ -853,6 +874,10 @@ public class FestivalService {
         );
     }
 
+    
+    
+    
+    
     // -------------------- HELPERS --------------------
     private void updateVenueLayout(Festival festival, VenueLayoutDTO dto) {
         if (dto == null) {
@@ -937,59 +962,62 @@ public class FestivalService {
         Map<String, FestivalUserRole> rolesMap = currentRoles.stream()
                 .collect(Collectors.toMap(r -> r.getUser().getUsername(), r -> r));
 
-        // Organizers
-        if (organizers == null) {
-            throw new ApiException("Organizers set cannot be null", HttpStatus.BAD_REQUEST);
-        }
-        if (organizers.isEmpty()) {
-            throw new ApiException("At least one organizer must be provided", HttpStatus.BAD_REQUEST);
-        }
-
-        for (String username : organizers) {
-            if (!rolesMap.containsKey(username)) {
-                User user = userRepository.findByUsername(username)
-                        .orElseThrow(() -> new ApiException("User not found: " + username, HttpStatus.NOT_FOUND));
-                FestivalUserRole role = new FestivalUserRole();
-                role.setFestival(festival);
-                role.setUser(user);
-                role.setRole(FestivalRoleType.ORGANIZER);
-                festivalUserRoleRepository.save(role);
-                currentRoles.add(role);
+        // Update organizers only if provided
+        if (organizers != null && !organizers.isEmpty()) {
+            for (String username : organizers) {
+                if (!rolesMap.containsKey(username)) {
+                    User user = userRepository.findByUsername(username)
+                            .orElseThrow(() -> new ApiException("User not found: " + username, HttpStatus.NOT_FOUND));
+                    FestivalUserRole role = new FestivalUserRole();
+                    role.setFestival(festival);
+                    role.setUser(user);
+                    role.setRole(FestivalRoleType.ORGANIZER);
+                    festivalUserRoleRepository.save(role);
+                    currentRoles.add(role);
+                }
             }
+
+            // Prevent removing creator (earliest organizer)
+            User creator = currentRoles.stream()
+                    .filter(r -> r.getRole() == FestivalRoleType.ORGANIZER)
+                    .min(Comparator.comparing(FestivalUserRole::getId))
+                    .get().getUser();
+
+            currentRoles.removeIf(r -> r.getRole() == FestivalRoleType.ORGANIZER
+                    && !organizers.contains(r.getUser().getUsername())
+                    && !r.getUser().equals(creator));
         }
 
-        // Prevent removing creator (earliest organizer)
-        User creator = currentRoles.stream()
-                .filter(r -> r.getRole() == FestivalRoleType.ORGANIZER)
-                .min(Comparator.comparing(FestivalUserRole::getId))
-                .get().getUser();
-
-        currentRoles.removeIf(r -> r.getRole() == FestivalRoleType.ORGANIZER
-                && !organizers.contains(r.getUser().getUsername())
-                && !r.getUser().equals(creator));
-
-        // Staff
-        if (staff == null) {
-            throw new ApiException("Staff set cannot be null", HttpStatus.BAD_REQUEST);
-        }
-        // Empty staff is allowed; means no staff assigned
-        currentRoles.removeIf(r -> r.getRole() == FestivalRoleType.STAFF);
-
-        for (String username : staff) {
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new ApiException("User not found: " + username, HttpStatus.NOT_FOUND));
-            FestivalUserRole role = new FestivalUserRole();
-            role.setFestival(festival);
-            role.setUser(user);
-            role.setRole(FestivalRoleType.STAFF);
-            festivalUserRoleRepository.save(role);
-            currentRoles.add(role);
+        // Update staff only if provided
+        if (staff != null && !staff.isEmpty()) {
+            for (String username : staff) {
+                // Skip if already a staff
+                boolean alreadyStaff = currentRoles.stream()
+                        .anyMatch(r -> r.getRole() == FestivalRoleType.STAFF && r.getUser().getUsername().equals(username));
+                if (!alreadyStaff) {
+                    User user = userRepository.findByUsername(username)
+                            .orElseThrow(() -> new ApiException("User not found: " + username, HttpStatus.NOT_FOUND));
+                    FestivalUserRole role = new FestivalUserRole();
+                    role.setFestival(festival);
+                    role.setUser(user);
+                    role.setRole(FestivalRoleType.STAFF);
+                    festivalUserRoleRepository.save(role);
+                    currentRoles.add(role);
+                }
+            }
         }
     }
 
     private boolean isOrganizerForFestival(User user, Festival festival) {
         if (!festivalUserRoleRepository.existsByFestivalAndUserAndRole(festival, user, FestivalRoleType.ORGANIZER)) {
             throw new ApiException("Only organizers of this festival can add new organizers", HttpStatus.FORBIDDEN);
+        }
+        return true;
+    }
+
+    private boolean checkIfFestivalAnnounced(Festival festival) {
+        if (festival.getState() != FestivalState.ANNOUNCED) {
+            return false;
         }
         return true;
     }
@@ -1048,4 +1076,52 @@ public class FestivalService {
         return dto;
     }
 
+    private void validateFestivalCompleteness(Festival festival) {
+        if (festival.getName() == null || festival.getName().isBlank()) {
+            throw new ApiException("Festival name is missing", HttpStatus.BAD_REQUEST);
+        }
+        if (festival.getDescription() == null || festival.getDescription().isBlank()) {
+            throw new ApiException("Festival description is missing", HttpStatus.BAD_REQUEST);
+        }
+        if (festival.getDates() == null || festival.getDates().isEmpty()) {
+            throw new ApiException("Festival dates are missing", HttpStatus.BAD_REQUEST);
+        }
+
+        // Venue layout checks
+        if (festival.getVenueLayout() == null
+                || festival.getVenueLayout().getStages() == null || festival.getVenueLayout().getStages().isEmpty()
+                || festival.getVenueLayout().getVendorAreas() == null || festival.getVenueLayout().getVendorAreas().isEmpty()
+                || festival.getVenueLayout().getFacilities() == null || festival.getVenueLayout().getFacilities().isEmpty()) {
+            throw new ApiException("Venue layout is incomplete", HttpStatus.BAD_REQUEST);
+        }
+
+        // Budget checks
+        if (festival.getBudget() == null
+                || festival.getBudget().getCosts() == null
+                || festival.getBudget().getExpectedRevenue() == null
+                || festival.getBudget().getLogistics() == null
+                || festival.getBudget().getTracking() == null) {
+            throw new ApiException("Budget information is incomplete", HttpStatus.BAD_REQUEST);
+        }
+
+        // Vendor management checks
+        if (festival.getVendorManagement() == null
+                || festival.getVendorManagement().getFoodStalls() == null
+                || festival.getVendorManagement().getMerchandiseBooths() == null) {
+            throw new ApiException("Vendor management information is incomplete", HttpStatus.BAD_REQUEST);
+        }
+
+        // Roles checks
+        boolean hasOrganizer = festival.getUserRoles().stream()
+                .anyMatch(r -> r.getRole() == FestivalRoleType.ORGANIZER);
+        boolean hasStaff = festival.getUserRoles().stream()
+                .anyMatch(r -> r.getRole() == FestivalRoleType.STAFF);
+
+        if (!hasOrganizer) {
+            throw new ApiException("Festival must have at least one organizer", HttpStatus.BAD_REQUEST);
+        }
+        if (!hasStaff) {
+            throw new ApiException("Festival must have at least one staff member", HttpStatus.BAD_REQUEST);
+        }
+    }
 }
