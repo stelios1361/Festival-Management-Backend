@@ -32,7 +32,7 @@ public class FestivalController {
      * @return an ApiResponse containing the details of the created festival
      * @throws ApiException if the creation process fails
      */
-    @PostMapping("/createfestival")
+    @PostMapping("/create")
     public ApiResponse<Map<String, Object>> createFestival(@RequestBody FestivalCreateRequest request) throws ApiException {
         return festivalService.createFestival(request);
     }
@@ -45,7 +45,7 @@ public class FestivalController {
      * @return an ApiResponse containing the updated festival details
      * @throws ApiException if the update process fails
      */
-    @PutMapping("/updatefestival")
+    @PutMapping("/update")
     public ApiResponse<Map<String, Object>> updateFestival(@RequestBody FestivalUpdateRequest request) throws ApiException {
         return festivalService.updateFestival(request);
     }
@@ -81,7 +81,7 @@ public class FestivalController {
      * @return an ApiResponse containing the list of matching festivals
      * @throws ApiException if the search process fails
      */
-    @GetMapping("/searchfestivals")
+    @GetMapping("/search")
     public ApiResponse<Map<String, Object>> searchfestivals(@RequestBody FestivalSearchRequest request) throws ApiException {
         return festivalService.searchFestivals(request);
     }
@@ -93,7 +93,7 @@ public class FestivalController {
      * @return an ApiResponse containing the festival details
      * @throws ApiException if retrieving festival details fails
      */
-    @GetMapping("/viewfestival")
+    @GetMapping("/view")
     public ApiResponse<Map<String, Object>> viewfestival(@RequestBody FestivalViewRequest request) throws ApiException {
         return festivalService.viewFestival(request);
     }
@@ -105,7 +105,7 @@ public class FestivalController {
      * @return an ApiResponse with operation status
      * @throws ApiException if deletion fails
      */
-    @DeleteMapping("/deletefestival")
+    @DeleteMapping("/delete")
     public ApiResponse<Map<String, Object>> deleteFestival(@RequestBody FestivalDeleteRequest request) throws ApiException {
         return festivalService.deleteFestival(request);
     }
@@ -189,7 +189,7 @@ public class FestivalController {
      * @return an ApiResponse with operation status
      * @throws ApiException if announcing the festival fails
      */
-    @PostMapping("/announcefestival")
+    @PostMapping("/announce")
     public ApiResponse<Map<String, Object>> announceFestival(@RequestBody FestivalAnnouncementRequest request) throws ApiException {
         return festivalService.announceFestival(request);
     }
