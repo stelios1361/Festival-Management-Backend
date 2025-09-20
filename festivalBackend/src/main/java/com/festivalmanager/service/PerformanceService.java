@@ -779,7 +779,7 @@ public class PerformanceService {
         }
 
         //Update performance details
-        performance.setSetlist((Set<String>) request.getSetlist());
+        performance.setSetlist(request.getSetlist());
         performance.setPreferredRehearsalTimes(request.getRehearsalTimes());
         performance.setPreferredPerformanceSlots(request.getPerformanceTimeSlots());
 

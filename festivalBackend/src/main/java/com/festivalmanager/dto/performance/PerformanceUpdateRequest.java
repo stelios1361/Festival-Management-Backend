@@ -2,7 +2,6 @@ package com.festivalmanager.dto.performance;
 import java.time.LocalTime;
 import lombok.Getter;
 import lombok.Setter;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -56,7 +55,7 @@ public class PerformanceUpdateRequest {
     /**
      * Updated list of band member IDs (user IDs) for this performance.
      */
-    private List<Long> bandMemberIds;
+    private Set<Long> bandMemberIds;
 
     /**
      * Updated technical requirements for the performance.
@@ -66,7 +65,7 @@ public class PerformanceUpdateRequest {
     /**
      * Updated setlist of songs for the performance.
      */
-    private List<String> setlist;
+    private Set<String> setlist;
 
     /**
      * Updated merchandise items associated with the performance.

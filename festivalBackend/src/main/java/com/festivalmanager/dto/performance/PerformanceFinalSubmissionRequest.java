@@ -3,7 +3,6 @@ package com.festivalmanager.dto.performance;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalTime;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -35,7 +34,7 @@ public class PerformanceFinalSubmissionRequest {
     /**
      * The final setlist of songs for the performance.
      */
-    private List<String> setlist;
+    private Set<String> setlist;
 
     /**
      * The final preferred rehearsal times for the performance.

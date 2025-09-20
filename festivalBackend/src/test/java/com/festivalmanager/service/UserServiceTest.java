@@ -1,7 +1,6 @@
 package com.festivalmanager.service;
 
 import com.festivalmanager.dto.user.*;
-import com.festivalmanager.enums.PermanentRoleType;
 import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.User;
 import com.festivalmanager.repository.UserRepository;
