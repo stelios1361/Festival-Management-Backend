@@ -14,6 +14,7 @@ This project was developed as part of the **Software Engineering course (321-400
 * Budget tracking and venue layout planning
 * Vendor management system
 * Performance scheduling and lineup organization
+* Festival Staff assigment 
 
 ### Performance Management
 
