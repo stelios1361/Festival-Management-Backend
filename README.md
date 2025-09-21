@@ -26,7 +26,7 @@ This project was developed as part of the **Software Engineering course (321-400
 ### User System
 
 * Role-based access control (`ADMIN`, `ORGANIZER`, `STAFF`, `ARTIST`)
-* Secure authentication with JWT tokens
+* Secure authentication with UUID tokens
 * Festival-specific role assignments
 
 ---
@@ -54,7 +54,7 @@ This project was developed as part of the **Software Engineering course (321-400
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/stelios1361/Festival-Management-Backend
    ```
 2. Configure your MySQL database in `application.properties`.
 3. Build the project using Maven:
@@ -70,20 +70,21 @@ This project was developed as part of the **Software Engineering course (321-400
 
 ---
 
-## API Endpoints (Placeholder)
-
-> Add your API endpoints here for reference. For example:
-
-* `POST /festivals` - Create a new festival
-* `GET /festivals/{id}` - Get festival details
-* `POST /performances` - Submit a performance
-
----
-
-## UML Diagram (Placeholder)
-
-> Include your class diagram or system architecture here.
-
+## Project Structure
+```bash
+src/
+├── main/
+│   ├── java/com/festivalmanager/
+│   │   ├── controller/     # REST API endpoints
+│   │   ├── dto/           # Data Transfer Objects
+│   │   ├── model/         # Entity classes
+│   │   ├── repository/    # Data access layer
+│   │   ├── service/       # Business logic
+│   │   └── security/      # Auth & security
+│   └── resources/
+└── test/
+    └── java/              # Test classes
+```
 ---
 
 ## License
