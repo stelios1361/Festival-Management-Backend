@@ -364,10 +364,11 @@ public class FestivalService {
             );
         }
 
-        // Filter announced festivals for visitors
-        boolean isVisitor = requester == null; // no user = visitor
+        // If no requester is provided, treat them as a visitor
+        boolean isVisitor = (requester == null);
 
         if (isVisitor) {
+            // Visitors can only see announced festivals
             festivals = festivalRepository.findAllByState(FestivalState.ANNOUNCED);
         }
 
@@ -797,7 +798,7 @@ public class FestivalService {
         festival.getPerformances().forEach(performance -> {
             if (!performance.isFinal_submitted()) {
                 performance.setState(Performance.PerformanceState.REJECTED);
-                performance.setReviewerComments("AUTOMATICALY REJECTED - NOT SUBMITTED");
+                performance.setReviewerComments("AUTOMATICALY REJECTED - NOT FINALLY SUBMITTED");
             }
         });
 
