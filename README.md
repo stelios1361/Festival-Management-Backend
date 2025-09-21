@@ -58,7 +58,7 @@ git clone https://github.com/stelios1361/Festival-Management-Backend
 ```bash
 cd Festival-Management-Backend/festivalBackend
 ```
-#### 3. Configure your MySQL database in src/main/resources/application.properties
+#### 3. Configure your MySQL database in src/main/resources/application.properties (must crate a database named festivaldb)
 
 #### 4. Build the project using Maven
 ```bash
@@ -67,6 +67,21 @@ mvn clean install
 #### 5. Run the application
 ```bash
 mvn spring-boot:run
+```
+---
+### Reading javadoc for the project
+#### 1. Navigate to the backend folder
+```bash
+cd Festival-Management-Backend/festivalBackend
+```
+#### 2. Generate javadoc (Ignore warnings)
+```bash
+mvn javadoc:javadoc
+```
+
+#### 3. Open the docs
+```bash
+start target\reports\apidocs\index.html
 ```
 ---
 
