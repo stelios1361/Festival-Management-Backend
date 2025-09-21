@@ -28,9 +28,6 @@ public class Festival {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** System-generated unique identifier (UUID) for external reference. */
-    @Column(unique = true, nullable = false, updatable = false)
-    private String identifier = java.util.UUID.randomUUID().toString();
 
     /** Timestamp when the festival was created. */
     @Column(nullable = false, updatable = false)

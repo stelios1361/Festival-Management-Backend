@@ -24,36 +24,52 @@ import java.util.Set;
 @Table(name = "performances")
 public class Performance {
 
-    /** Unique database identifier for the performance. */
+    /**
+     * Unique database identifier for the performance.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Unique system-generated identifier (UUID). */
-    @Column(unique = true, nullable = false, updatable = false)
-    private String identifier = java.util.UUID.randomUUID().toString();
-
-    /** Timestamp when the performance was created. */
+    /**
+     * Timestamp when the performance was created.
+     */
     @Column(nullable = false, updatable = false)
     private LocalDateTime creationDate = LocalDateTime.now();
 
-    /** Unique name of the performance. */
+    /**
+     * Unique name of the performance.
+     */
     @Column(nullable = false, unique = true)
     private String name;
 
-    /** Description of the performance. */
+    /**
+     * Description of the performance.
+     */
     @Column(nullable = false, length = 1000)
     private String description;
 
-    /** Genre of the performance. */
+    /**
+     * Genre of the performance.
+     */
     @Column(nullable = false)
     private String genre;
 
-    /** Duration of the performance in minutes. */
+    /**
+     * Duration of the performance in minutes.
+     */
     @Column(nullable = false)
     private Integer duration;
 
-    /** Band members (users who are artists) performing in this performance. */
+    /**
+     * Indicates whether the performance  is finally submitted.
+     */
+    @Column(nullable = false)
+    private boolean final_submitted;
+
+    /**
+     * Band members (users who are artists) performing in this performance.
+     */
     @ManyToMany
     @JoinTable(
             name = "performance_band_members",
@@ -62,55 +78,77 @@ public class Performance {
     )
     private Set<User> bandMembers = new HashSet<>();
 
-    /** Optional technical requirement file associated with the performance. */
+    /**
+     * Optional technical requirement file associated with the performance.
+     */
     @OneToOne(mappedBy = "performance", cascade = CascadeType.ALL, orphanRemoval = true)
     private TechnicalRequirementFile technicalRequirement;
 
-    /** Optional setlist of songs for the performance. */
+    /**
+     * Optional setlist of songs for the performance.
+     */
     @ElementCollection
     @CollectionTable(name = "performance_setlist", joinColumns = @JoinColumn(name = "performance_id"))
     @Column(name = "song")
     private Set<String> setlist = new HashSet<>();
 
-    /** Merchandise items associated with the performance. */
+    /**
+     * Merchandise items associated with the performance.
+     */
     @OneToMany(mappedBy = "performance", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<MerchandiseItem> merchandiseItems = new HashSet<>();
 
-    /** Optional preferred rehearsal times. */
+    /**
+     * Optional preferred rehearsal times.
+     */
     @ElementCollection
     @CollectionTable(name = "performance_rehearsal_times", joinColumns = @JoinColumn(name = "performance_id"))
     @Column(name = "rehearsal_time")
     private Set<LocalTime> preferredRehearsalTimes = new HashSet<>();
 
-    /** Optional preferred performance slots. */
+    /**
+     * Optional preferred performance slots.
+     */
     @ElementCollection
     @CollectionTable(name = "performance_slots", joinColumns = @JoinColumn(name = "performance_id"))
     @Column(name = "performance_slot")
     private Set<LocalTime> preferredPerformanceSlots = new HashSet<>();
 
-    /** Stage manager responsible for this performance (must be festival staff). */
+    /**
+     * Stage manager responsible for this performance (must be festival staff).
+     */
     @ManyToOne
     @JoinColumn(name = "stage_manager_id")
     private User stageManager;
 
-    /** Creator / main artist of the performance. */
+    /**
+     * Creator / main artist of the performance.
+     */
     @ManyToOne(optional = false)
     @JoinColumn(name = "creator_id")
     private User creator;
 
-    /** Reviewer comments for this performance. */
+    /**
+     * Reviewer comments for this performance.
+     */
     @Column(length = 1000)
     private String reviewerComments;
 
-    /** Reviewer score. */
+    /**
+     * Reviewer score.
+     */
     private Double score;
 
-    /** Current state of the performance workflow. */
+    /**
+     * Current state of the performance workflow.
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PerformanceState state = PerformanceState.CREATED;
 
-    /** Festival to which this performance belongs. */
+    /**
+     * Festival to which this performance belongs.
+     */
     @ManyToOne(optional = false)
     @JoinColumn(name = "festival_id")
     private Festival festival;
@@ -119,11 +157,11 @@ public class Performance {
      * Enumeration representing the possible states of a performance.
      */
     public enum PerformanceState {
-        CREATED,    // Initial state
-        SUBMITTED,  // Submitted for review
-        REVIEWED,   // Reviewed by staff
-        APPROVED,   // Approved by organizer
-        SCHEDULED,  // Scheduled for performance
+        CREATED, // Initial state
+        SUBMITTED, // Submitted for review
+        REVIEWED, // Reviewed by staff
+        APPROVED, // Approved by organizer
+        SCHEDULED, // Scheduled for performance
         REJECTED    // Rejected by organizer
     }
 }

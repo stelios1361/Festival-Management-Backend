@@ -5,6 +5,7 @@ import com.festivalmanager.dto.performance.*;
 import com.festivalmanager.enums.FestivalRoleType;
 import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.*;
+import com.festivalmanager.model.Performance.PerformanceState;
 import com.festivalmanager.repository.*;
 import com.festivalmanager.security.UserSecurityService;
 import jakarta.transaction.Transactional;
@@ -171,7 +172,6 @@ public class PerformanceService {
         //Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", savedPerformance.getId());
-        data.put("identifier", savedPerformance.getIdentifier());
         data.put("name", savedPerformance.getName());
         data.put("state", savedPerformance.getState().name());
         data.put("mainArtist", requester.getUsername());
@@ -209,6 +209,10 @@ public class PerformanceService {
 
         if (!isArtist) {
             throw new ApiException("Only ARTIST of this performance can update it", HttpStatus.FORBIDDEN);
+        }
+
+        if (performance.getState() != PerformanceState.CREATED) {
+            throw new ApiException("Cannot perform performance update once submitted", HttpStatus.FORBIDDEN);
         }
 
         //Apply updates (only if non-null)
@@ -344,7 +348,11 @@ public class PerformanceService {
         boolean isArtist = performanceRepository.existsByIdAndCreator(performance.getId(), requester);
 
         if (!isArtist) {
-            throw new ApiException("Only ARTIST of this performance can update it", HttpStatus.FORBIDDEN);
+            throw new ApiException("Only ARTIST of this performance can add band members", HttpStatus.FORBIDDEN);
+        }
+
+        if (performance.getState() != PerformanceState.CREATED) {
+            throw new ApiException("Cannot perform band member addition to performance once submitted", HttpStatus.FORBIDDEN);
         }
 
         //Find new band member
@@ -432,7 +440,6 @@ public class PerformanceService {
         //Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", updated.getId());
-        data.put("identifier", updated.getIdentifier());
         data.put("name", updated.getName());
         data.put("state", updated.getState().name());
 
@@ -782,6 +789,7 @@ public class PerformanceService {
         performance.setSetlist(request.getSetlist());
         performance.setPreferredRehearsalTimes(request.getRehearsalTimes());
         performance.setPreferredPerformanceSlots(request.getPerformanceTimeSlots());
+        performance.setFinal_submitted(true);
 
         Performance updated = performanceRepository.save(performance);
 
@@ -1013,7 +1021,6 @@ public class PerformanceService {
         boolean canViewFullDetails = isCreator || isBandMember || isStageManager || isOrganizer;
 
         if (canViewFullDetails) {
-            dto.setIdentifier(performance.getIdentifier());
             dto.setDescription(performance.getDescription());
             dto.setCreator(performance.getCreator().getUsername());
 
