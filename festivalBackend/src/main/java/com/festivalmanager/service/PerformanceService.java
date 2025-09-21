@@ -5,6 +5,7 @@ import com.festivalmanager.dto.performance.*;
 import com.festivalmanager.enums.FestivalRoleType;
 import com.festivalmanager.exception.ApiException;
 import com.festivalmanager.model.*;
+import com.festivalmanager.model.Performance.PerformanceState;
 import com.festivalmanager.repository.*;
 import com.festivalmanager.security.UserSecurityService;
 import jakarta.transaction.Transactional;
@@ -210,6 +211,10 @@ public class PerformanceService {
             throw new ApiException("Only ARTIST of this performance can update it", HttpStatus.FORBIDDEN);
         }
 
+        if (performance.getState() != PerformanceState.CREATED) {
+            throw new ApiException("Cannot perform performance update once submitted", HttpStatus.FORBIDDEN);
+        }
+
         //Apply updates (only if non-null)
         if (request.getName() != null && !request.getName().isBlank()) {
             boolean nameExists = performanceRepository.existsByFestivalAndNameExcludingPerformance(
@@ -343,7 +348,11 @@ public class PerformanceService {
         boolean isArtist = performanceRepository.existsByIdAndCreator(performance.getId(), requester);
 
         if (!isArtist) {
-            throw new ApiException("Only ARTIST of this performance can update it", HttpStatus.FORBIDDEN);
+            throw new ApiException("Only ARTIST of this performance can add band members", HttpStatus.FORBIDDEN);
+        }
+
+        if (performance.getState() != PerformanceState.CREATED) {
+            throw new ApiException("Cannot perform band member addition to performance once submitted", HttpStatus.FORBIDDEN);
         }
 
         //Find new band member
@@ -783,7 +792,6 @@ public class PerformanceService {
         performance.setFinal_submitted(true);
 
         Performance updated = performanceRepository.save(performance);
-        
 
         //Build response
         Map<String, Object> data = new HashMap<>();
