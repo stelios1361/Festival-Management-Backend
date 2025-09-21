@@ -50,24 +50,24 @@ This backend provides a comprehensive API for user, festival organizers, staff a
 * MySQL Database
 
 ### Setup
+#### 1. Clone the repository
+```bash
+git clone https://github.com/stelios1361/Festival-Management-Backend
+```
+#### 2. Navigate to the backend folder
+```bash
+cd Festival-Management-Backend/festivalBackend
+```
+#### 3. Configure your MySQL database in src/main/resources/application.properties
 
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/stelios1361/Festival-Management-Backend
-   ```
-2. Configure your MySQL database in `application.properties`.
-3. Build the project using Maven:
-
-   ```bash
-   mvn clean install
-   ```
-4. Run the application:
-
-   ```bash
-   mvn spring-boot:run
-   ```
-
+#### 4. Build the project using Maven
+```bash
+mvn clean install
+```
+#### 5. Run the application
+```bash
+mvn spring-boot:run
+```
 ---
 
 ## Project Structure
