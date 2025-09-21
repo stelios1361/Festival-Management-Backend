@@ -1004,7 +1004,7 @@ public class FestivalService {
 
     private boolean isOrganizerForFestival(User user, Festival festival) {
         if (!festivalUserRoleRepository.existsByFestivalAndUserAndRole(festival, user, FestivalRoleType.ORGANIZER)) {
-            throw new ApiException("Only organizers of this festival can add new organizers", HttpStatus.FORBIDDEN);
+            throw new ApiException("Only organizers of this festival can do this", HttpStatus.FORBIDDEN);
         }
         return true;
     }
