@@ -22,8 +22,6 @@ public class PerformanceSearchResponseDTO {
     /** The unique identifier of the performance. */
     private Long id;
 
-    /** The system-generated identifier. */
-    private String identifier;
 
     /** The name of the performance. */
     private String name;
