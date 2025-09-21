@@ -87,6 +87,3 @@ src/
 ```
 ---
 
-## License
-
-This project is for **academic purposes** and does not include a specific license.
