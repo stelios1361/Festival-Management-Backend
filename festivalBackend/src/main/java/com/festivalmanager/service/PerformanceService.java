@@ -171,7 +171,6 @@ public class PerformanceService {
         //Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", savedPerformance.getId());
-        data.put("identifier", savedPerformance.getIdentifier());
         data.put("name", savedPerformance.getName());
         data.put("state", savedPerformance.getState().name());
         data.put("mainArtist", requester.getUsername());
@@ -432,7 +431,6 @@ public class PerformanceService {
         //Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", updated.getId());
-        data.put("identifier", updated.getIdentifier());
         data.put("name", updated.getName());
         data.put("state", updated.getState().name());
 
@@ -782,8 +780,10 @@ public class PerformanceService {
         performance.setSetlist(request.getSetlist());
         performance.setPreferredRehearsalTimes(request.getRehearsalTimes());
         performance.setPreferredPerformanceSlots(request.getPerformanceTimeSlots());
+        performance.setFinal_submitted(true);
 
         Performance updated = performanceRepository.save(performance);
+        
 
         //Build response
         Map<String, Object> data = new HashMap<>();
@@ -1013,7 +1013,6 @@ public class PerformanceService {
         boolean canViewFullDetails = isCreator || isBandMember || isStageManager || isOrganizer;
 
         if (canViewFullDetails) {
-            dto.setIdentifier(performance.getIdentifier());
             dto.setDescription(performance.getDescription());
             dto.setCreator(performance.getCreator().getUsername());
 

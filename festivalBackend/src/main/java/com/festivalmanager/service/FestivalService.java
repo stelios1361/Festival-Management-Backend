@@ -175,7 +175,6 @@ public class FestivalService {
         // Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", updatedFestival.getId());
-        data.put("identifier", updatedFestival.getIdentifier());
         data.put("name", updatedFestival.getName());
         data.put("state", updatedFestival.getState().name());
         data.put("organizers", updatedFestival.getUserRoles().stream()
@@ -259,7 +258,6 @@ public class FestivalService {
         // Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", updatedFestival.getId());
-        data.put("identifier", updatedFestival.getIdentifier());
         data.put("organizers", updatedFestival.getUserRoles().stream()
                 .filter(r -> r.getRole() == FestivalRoleType.ORGANIZER)
                 .map(r -> r.getUser().getUsername())
@@ -330,7 +328,6 @@ public class FestivalService {
         // Build response
         Map<String, Object> data = new HashMap<>();
         data.put("id", updatedFestival.getId());
-        data.put("identifier", updatedFestival.getIdentifier());
         data.put("staff", updatedFestival.getUserRoles().stream()
                 .filter(r -> r.getRole() == FestivalRoleType.STAFF)
                 .map(r -> r.getUser().getUsername())
@@ -769,7 +766,7 @@ public class FestivalService {
      * Starts the decision-making phase for a festival.
      * <p>
      * This action is permitted only if the festival is in FINAL_SUBMISSION
-     * state. All performances that were not submitted by this point are
+     * state. All performances that were not finally submitted by this point are
      * automatically marked as REJECTED. Only organizers of the festival can
      * perform this action.
      *
@@ -796,9 +793,9 @@ public class FestivalService {
         //Check requester is an organizer
         isOrganizerForFestival(requester, festival);
 
-        //Reject all performances that are not submitted
+        //Reject all performances that are not finally submitted
         festival.getPerformances().forEach(performance -> {
-            if (performance.getState() != Performance.PerformanceState.SUBMITTED) {
+            if (!performance.isFinal_submitted()) {
                 performance.setState(Performance.PerformanceState.REJECTED);
                 performance.setReviewerComments("AUTOMATICALY REJECTED - NOT SUBMITTED");
             }
@@ -874,10 +871,6 @@ public class FestivalService {
         );
     }
 
-    
-    
-    
-    
     // -------------------- HELPERS --------------------
     private void updateVenueLayout(Festival festival, VenueLayoutDTO dto) {
         if (dto == null) {
