@@ -412,7 +412,7 @@ public class PerformanceService {
         boolean isArtist = performanceRepository.existsByIdAndCreator(performance.getId(), requester);
 
         if (!isArtist) {
-            throw new ApiException("Only ARTIST of this performance can update it", HttpStatus.FORBIDDEN);
+            throw new ApiException("Only ARTIST of this performance can submit it", HttpStatus.FORBIDDEN);
         }
 
         //Check if festival allows submission (example: festival must be in SUBMISSION state)
