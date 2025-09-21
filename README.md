@@ -5,7 +5,7 @@
 This project was developed as part of the **Software Engineering course (321-4002)**. It focuses on building a **robust backend system** for managing music festivals, handling the entire lifecycle—from festival creation and performance submissions to final lineup announcements.
 
 ---
-##Overview
+## Overview
 This backend provides a comprehensive API for user, festival organizers, staff and artists. It supports all major operations required to run a music festival, including user authentication, role management, scheduling, budgeting, and many more.
 
 ## Key Features
