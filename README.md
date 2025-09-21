@@ -5,24 +5,23 @@
 This project was developed as part of the **Software Engineering course (321-4002)**. It focuses on building a **robust backend system** for managing music festivals, handling the entire lifecycle—from festival creation and performance submissions to final lineup announcements.
 
 ---
+##Overview
+This backend provides a comprehensive API for user, festival organizers, staff and artists. It supports all major operations required to run a music festival, including user authentication, role management, scheduling, budgeting, and many more.
 
 ## Key Features
 
 ### Festival Management
 
-* Complete festival lifecycle management with state transitions
+* Full festival lifecycle with state transitions
 * Budget tracking and venue layout planning
-* Vendor management system
-* Performance scheduling and lineup organization
-* Festival Staff assigment 
+* Vendor management and staff assignment
+* Performance scheduling and lineup organization 
 
 ### Performance Management
 
-* Artist/Band performance submissions
-* Technical requirements handling
-* Merchandise management
-* Band member coordination
-* Review and approval system
+* Artist/Band members performance submissions and approvals
+* Technical requirements and merchandise management
+* Band member coordination and review system
 
 ### User System
 
@@ -88,3 +87,10 @@ src/
 ```
 ---
 
+Configuration
+* All application settings (DB, ports, etc.) are managed in application.properties.
+* Uses Spring Data JPA for ORM and repository management.
+* Security is handled via Spring Security and custom token-based authentication.
+
+License
+This project is with GPL-3.0 license.
