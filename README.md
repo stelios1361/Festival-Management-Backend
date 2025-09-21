@@ -58,7 +58,7 @@ git clone https://github.com/stelios1361/Festival-Management-Backend
 ```bash
 cd Festival-Management-Backend/festivalBackend
 ```
-#### 3. Configure your MySQL database in src/main/resources/application.properties (must crate a database named festivaldb)
+#### 3. Configure your MySQL database in src/main/resources/application.properties (must create a database named festivaldb)
 
 #### 4. Build the project using Maven
 ```bash
